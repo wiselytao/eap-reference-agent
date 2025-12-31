@@ -1,0 +1,30 @@
+profile_id: "default"
+version: "v1"
+description: "Default profile"
+enabled_tools:
+  - "*"
+allowed_strategies:
+  - "STR_V"
+  - "STR_G"
+  - "STR_H"
+  - "STR_HCOT"
+  - "STR_E_FJ_H"
+  - "STR_FALLBACK_V"
+limits:
+  max_steps: 3
+  evidence_min: 1
+  evidence_max: 12
+  token_max: 2048
+fallback_order:
+  - "STR_FALLBACK_V"
+answer_policy:
+  must_cite: true
+  conflict_show: true
+  no_evidence_template: "TPL_NO_EVIDENCE_V1"
+hybrid_preference:
+  prefer_hybrid_pipeline: true
+  prefer_hybridcot: false
+  hybridcot_allowlist_intents: []
+quality_gate:
+  require_evidence_contract: true
+  enable_quality_rescue: false

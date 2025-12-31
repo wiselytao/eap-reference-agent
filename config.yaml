@@ -1,0 +1,25 @@
+llm:
+  provider: azure_openai
+  base_url: "https://e800-ai-coding.openai.azure.com"
+  model: "gpt-4.1"
+  api_key_ref: "AOAI_KEY"
+  temperature: 0.2
+  max_tokens: 512
+  extra:
+    api_version: "2025-01-01-preview"
+
+runtime:
+  streaming_default: false
+  timeout_seconds: 60
+  concurrency: 4
+
+audit:
+  trace_dir: "data/traces"
+  retention_days: 30
+
+security:
+  allowed_profiles:
+    - "default"
+
+observability:
+  log_level: "INFO"

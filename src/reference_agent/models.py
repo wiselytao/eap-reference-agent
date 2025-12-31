@@ -1,0 +1,166 @@
+from __future__ import annotations
+
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field
+
+ToolType = Literal["hybridrag_pipeline", "external_mcp"]
+AdapterType = Literal["hybridrag_chat_api_v1", "mcp"]
+EvidenceContract = Literal["REQUIRED", "OPTIONAL", "NONE"]
+EvidenceSourceType = Literal[
+    "vector_chunk",
+    "graph_node",
+    "graph_edge",
+    "sql_row",
+    "sql_metric",
+    "external_chunk",
+    "hybrid_answer",
+]
+FinalStatus = Literal["SUCCESS", "PARTIAL", "EMPTY", "FAILED"]
+
+
+class ToolConstraints(BaseModel):
+    timeout_class: Optional[str] = None
+    topK: Optional[int] = None
+    max_hops: Optional[int] = None
+    max_rows: Optional[int] = None
+
+
+class ToolEntry(BaseModel):
+    tool_id: str
+    type: ToolType
+    project_id: str
+    adapter: AdapterType
+    base_url: Optional[str] = None
+    auth_ref: Optional[str] = None
+    pipeline_prefix: Optional[str] = None
+    capabilities: List[str] = Field(default_factory=list)
+    constraints: ToolConstraints = Field(default_factory=ToolConstraints)
+    evidence_contract: EvidenceContract = "OPTIONAL"
+    evidence_locator_policy: Optional[str] = None
+
+
+class ProfileLimits(BaseModel):
+    max_steps: int = 3
+    evidence_min: int = 1
+    evidence_max: int = 12
+    token_max: Optional[int] = None
+    per_tool: Dict[str, ToolConstraints] = Field(default_factory=dict)
+
+
+class AnswerPolicy(BaseModel):
+    must_cite: bool = True
+    conflict_show: bool = True
+    no_evidence_template: str = "TPL_NO_EVIDENCE_V1"
+
+
+class HybridPreference(BaseModel):
+    prefer_hybrid_pipeline: bool = True
+    prefer_hybridcot: bool = False
+    hybridcot_allowlist_intents: List[str] = Field(default_factory=list)
+
+
+class QualityGate(BaseModel):
+    require_evidence_contract: bool = True
+    enable_quality_rescue: bool = False
+
+
+class Profile(BaseModel):
+    profile_id: str
+    version: str
+    description: Optional[str] = None
+    enabled_tools: List[str]
+    allowed_strategies: List[str]
+    limits: ProfileLimits = Field(default_factory=ProfileLimits)
+    fallback_order: List[str] = Field(default_factory=list)
+    answer_policy: AnswerPolicy = Field(default_factory=AnswerPolicy)
+    hybrid_preference: HybridPreference = Field(default_factory=HybridPreference)
+    quality_gate: QualityGate = Field(default_factory=QualityGate)
+
+
+class EvidenceLocator(BaseModel):
+    chat_id: Optional[str] = None
+    messageId: Optional[str] = None
+    external_ref: Optional[str] = None
+
+
+class Evidence(BaseModel):
+    source_type: EvidenceSourceType
+    tool_id: str
+    source_id: str
+    locator: EvidenceLocator
+    snippet: Optional[str] = None
+    retrieval_meta: Dict[str, Any] = Field(default_factory=dict)
+    confidence: Optional[float] = None
+
+
+class RouterBindingReadiness(BaseModel):
+    required_bindings: List[str] = Field(default_factory=list)
+    provided_bindings: List[str] = Field(default_factory=list)
+    missing_bindings: List[str] = Field(default_factory=list)
+    dependency_required: bool = False
+    resolution_policy: Optional[str] = None
+
+
+class RouterOutput(BaseModel):
+    strategy_id: str
+    params: Dict[str, Any] = Field(default_factory=dict)
+    rationale_codes: List[str] = Field(default_factory=list)
+    binding_readiness: RouterBindingReadiness = Field(default_factory=RouterBindingReadiness)
+    intent_detected: Optional[str] = None
+    candidate_strategies: List[str] = Field(default_factory=list)
+    tool_health_snapshot: Dict[str, Any] = Field(default_factory=dict)
+    selected_tools: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class StepRecord(BaseModel):
+    step_id: str
+    tool_id: Optional[str] = None
+    input_summary: Dict[str, Any] = Field(default_factory=dict)
+    output_summary: Dict[str, Any] = Field(default_factory=dict)
+    duration_ms: Optional[int] = None
+    error_code: Optional[str] = None
+    degraded: bool = False
+
+
+class Trace(BaseModel):
+    trace_id: str
+    profile_id: str
+    profile_version: str
+    router: RouterOutput
+    steps: List[StepRecord] = Field(default_factory=list)
+    final_status: FinalStatus
+    evidence: List[Evidence] = Field(default_factory=list)
+    user_visible_notes: List[str] = Field(default_factory=list)
+
+
+class AskRequest(BaseModel):
+    query: str
+    profile_id: str
+    context: Optional[Dict[str, Any]] = None
+    strategy_id: Optional[str] = None
+
+
+class AskResponse(BaseModel):
+    answer: str
+    evidence: List[Evidence]
+    trace_id: str
+    status: FinalStatus
+
+
+class ValidateRequest(BaseModel):
+    trace_id: Optional[str] = None
+    evidence_ref: Optional[EvidenceLocator] = None
+
+
+class CapabilitiesResponse(BaseModel):
+    profile_id: str
+    allowed_strategies: List[str]
+    limits: ProfileLimits
+    enabled_tools: List[str]
+
+
+class ToolHealth(BaseModel):
+    tool_id: str
+    healthy: bool = True
+    failure_count: int = 0

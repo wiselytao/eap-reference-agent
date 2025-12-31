@@ -1,0 +1,3564 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Gemini Enterprise API",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Gemini Explore Support",
+      "email": "support@geminidata.com",
+      "url": "https://geminidata.com/support"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Server"
+    }
+  ],
+  "paths": {
+    "/api/v1/portal/projects/{id}/status": {
+      "get": {
+        "summary": "Get project status (provisioning state)",
+        "tags": [
+          "portal/projects"
+        ],
+        "operationId": "project.status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exist": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portal/projects/{id}/messageCount": {
+      "get": {
+        "summary": "Get project message count by year/month",
+        "tags": [
+          "portal/projects"
+        ],
+        "operationId": "project.messageCount",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message count by date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "messageCount": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "year": {
+                            "type": "integer"
+                          },
+                          "month": {
+                            "type": "integer"
+                          },
+                          "messageCount": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portal/projects/{id}": {
+      "get": {
+        "summary": "Get project details",
+        "tags": [
+          "portal/projects"
+        ],
+        "operationId": "project.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "withMeta",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skipCache",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "project": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No permission"
+          }
+        }
+      },
+      "post": {
+        "summary": "Edit a project",
+        "tags": [
+          "portal/projects"
+        ],
+        "operationId": "project.edit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Project fields to update"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "project": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad parameter or permission error"
+          }
+        }
+      }
+    },
+    "/api/v1/portal/projects/{id}/cleanup": {
+      "post": {
+        "summary": "Cleanup project data (owner admin)",
+        "tags": [
+          "portal/projects"
+        ],
+        "operationId": "project.cleanup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project cleaned up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad parameter or permission error"
+          }
+        }
+      }
+    },
+    "/api/v1/portal/projects/{id}/reset": {
+      "post": {
+        "summary": "Reset project (admin only)",
+        "tags": [
+          "portal/projects"
+        ],
+        "operationId": "project.reset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project reset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad parameter or permission error"
+          }
+        }
+      }
+    },
+    "/api/v1/portal/projects/{id}/inviteUser": {
+      "post": {
+        "summary": "Invite a user to a project",
+        "tags": [
+          "portal/projects"
+        ],
+        "operationId": "project.inviteUser",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User invited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "project": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad parameter or permission error"
+          }
+        }
+      }
+    },
+    "/api/v1/portal/projects/{id}/removeUser": {
+      "post": {
+        "summary": "Remove a user from a project",
+        "tags": [
+          "portal/projects"
+        ],
+        "operationId": "project.removeUser",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User removed from project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "project": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad parameter or permission error"
+          }
+        }
+      }
+    },
+    "/api/v1/chat/summary": {
+      "get": {
+        "summary": "Get chat summary",
+        "description": "Retrieves a summary of the chat based on the specified type.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "The type of summary to retrieve (default, markdown, literal)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary retrieved successfully."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/list": {
+      "get": {
+        "summary": "List chats",
+        "description": "Retrieves a list of chats based on the user's permissions and query parameters.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of chats retrieved successfully."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{chat_id}/messages": {
+      "get": {
+        "summary": "Get chat messages",
+        "description": "Retrieves messages for a specific chat.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the chat."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages retrieved successfully."
+          },
+          "404": {
+            "description": "Chat not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{chat_id}": {
+      "get": {
+        "summary": "Get chat details",
+        "description": "Retrieves details of a specific chat.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the chat."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat details retrieved successfully."
+          },
+          "404": {
+            "description": "Chat not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Ask a question in a chat",
+        "description": "Sends a question to a specific chat and retrieves the AI's response. Supports streaming responses.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the chat."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "q": {
+                    "type": "string",
+                    "description": "The question to ask."
+                  },
+                  "messageId": {
+                    "type": "string",
+                    "description": "The ID of the message (optional)."
+                  },
+                  "streaming": {
+                    "type": "boolean",
+                    "description": "Whether to enable streaming responses."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI response retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "string",
+                      "description": "The AI's response."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chat not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/create": {
+      "post": {
+        "summary": "Create a new chat",
+        "description": "Creates a new chat with the provided details.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "The title of the chat."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Chat created successfully."
+          },
+          "400": {
+            "description": "Invalid input."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{chat_id}/update": {
+      "post": {
+        "summary": "Update chat details",
+        "description": "Updates the details of a specific chat.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the chat."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "The updated chat details."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Chat updated successfully."
+          },
+          "404": {
+            "description": "Chat not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{chat_id}/{message_id}/chartgen": {
+      "post": {
+        "summary": "Generate a chart for a specific message",
+        "description": "Generates a chart based on the data of a specific message in a chat.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the chat."
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the message."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "chartFlag": {
+                    "type": "string",
+                    "description": "The flag indicating the type of chart to generate."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Chart generated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "description": "The generated chart data."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required parameters (chat_id, message_id, or chartFlag)."
+          },
+          "404": {
+            "description": "Chat or message not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/question/{question_id}/update": {
+      "post": {
+        "summary": "Update question details",
+        "description": "Updates the details of a specific question.",
+        "tags": [
+          "chat/question"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the question."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "The updated question details."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Question updated successfully."
+          },
+          "404": {
+            "description": "Question not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{chat_id}/{message_id}/update": {
+      "post": {
+        "summary": "Update a specific message in a chat",
+        "description": "Updates the content of a specific message in a chat by its ID.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the chat."
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the message to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "The updated content of the message."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chat or message not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{chat_id}/remove": {
+      "post": {
+        "summary": "Remove chat",
+        "description": "Deletes a specific chat.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the chat."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat removed successfully."
+          },
+          "404": {
+            "description": "Chat not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/message/{message_id}": {
+      "get": {
+        "summary": "Get message details",
+        "description": "Retrieves details of a specific message.",
+        "tags": [
+          "chat/message"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the message."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message details retrieved successfully."
+          },
+          "404": {
+            "description": "Message not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/question/list": {
+      "get": {
+        "summary": "List questions",
+        "description": "Retrieves a list of questions based on the user's permissions and query parameters.",
+        "tags": [
+          "chat/question"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of questions retrieved successfully."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/question/categories": {
+      "get": {
+        "summary": "Retrieve question categories",
+        "description": "Fetches a list of available question categories.",
+        "tags": [
+          "chat/question"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Categories retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "description": "Category name."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/question/{question_id}": {
+      "get": {
+        "summary": "Get question details",
+        "description": "Retrieves details of a specific question.",
+        "tags": [
+          "chat/question"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the question."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Question details retrieved successfully."
+          },
+          "404": {
+            "description": "Question not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/question/create": {
+      "post": {
+        "summary": "Create a new question",
+        "description": "Creates a new question with the provided details.",
+        "tags": [
+          "chat/question"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "The question details."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Question created successfully."
+          },
+          "400": {
+            "description": "Invalid input."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/question/{question_id}/remove": {
+      "post": {
+        "summary": "Remove question",
+        "description": "Deletes a specific question.",
+        "tags": [
+          "chat/question"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the question."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Question removed successfully."
+          },
+          "404": {
+            "description": "Question not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{chat_id}/{message_id}/validation": {
+      "get": {
+        "summary": "Get validation data for a message",
+        "description": "Retrieves validation data (graph and documents) for a specific message in a chat.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the chat."
+          },
+          {
+            "in": "path",
+            "name": "messageId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the message."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validation data retrieved successfully."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/chat/document/{knowledge_id}": {
+      "get": {
+        "summary": "Get document from knowledge service",
+        "description": "Retrieves a document from the knowledge service by its ID.",
+        "tags": [
+          "chat/chat"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "knowledge_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the knowledge document."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document retrieved successfully."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/import/commands": {
+      "get": {
+        "summary": "Get a list of commands.",
+        "description": "Retrieves a list of commands. Supports filtering by type and options for flat or read-only views.",
+        "tags": [
+          "import/commands"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter commands by type."
+          },
+          {
+            "in": "query",
+            "name": "flat",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to return a flat list of commands."
+          },
+          {
+            "in": "query",
+            "name": "read_only",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to return read-only commands."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of commands.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Could not retrieve commands."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "put": {
+        "summary": "Create a new command.",
+        "description": "Creates a new command with the provided details. Requires a valid license and appropriate access permissions.",
+        "tags": [
+          "import/commands"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "type",
+                  "config"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the command.",
+                    "example": "testapi"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "The type of the command.",
+                    "example": "splunk"
+                  },
+                  "config": {
+                    "type": "object",
+                    "description": "Configuration details for the command.",
+                    "properties": {
+                      "query": {
+                        "type": "string",
+                        "description": "The query string for the command.",
+                        "example": "*.*"
+                      },
+                      "application": {
+                        "type": "string",
+                        "description": "The application associated with the command.",
+                        "example": ""
+                      },
+                      "earliest_time": {
+                        "type": "string",
+                        "description": "The earliest time for the query.",
+                        "example": ""
+                      },
+                      "latest_time": {
+                        "type": "string",
+                        "description": "The latest time for the query.",
+                        "example": ""
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Command created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. The command could not be created."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/import/commands/{commandId}": {
+      "get": {
+        "summary": "Get a command by ID.",
+        "description": "Retrieves the details of a specific command by its ID.",
+        "tags": [
+          "import/commands"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "commandId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the command to retrieve."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Command details retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Could not retrieve the command."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Update a command.",
+        "description": "Updates the details of an existing command by its ID. Requires a valid license and appropriate access permissions.",
+        "tags": [
+          "import/commands"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "commandId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the command to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The updated name of the command."
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "The updated type of the command."
+                  },
+                  "config": {
+                    "type": "object",
+                    "description": "Updated configuration details for the command."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Command updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. The command could not be updated."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a command.",
+        "description": "Deletes a specific command by its ID. Requires a valid license and appropriate access permissions.",
+        "tags": [
+          "import/commands"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "commandId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the command to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Command deleted successfully."
+          },
+          "400": {
+            "description": "Bad request. The command could not be deleted."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/import/flows": {
+      "get": {
+        "summary": "Get a list of flows.",
+        "description": "Retrieve a list of flows with optional query parameters for flat, extended, and read-only views.",
+        "tags": [
+          "import/flows"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "flat",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to return a flat list of flows."
+          },
+          {
+            "in": "query",
+            "name": "extended",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to include extended information about flows."
+          },
+          {
+            "in": "query",
+            "name": "read_only",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to return flows in read-only mode."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of flows.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlowObj"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "No flows found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "put": {
+        "summary": "Create a new flow.",
+        "description": "Create a new flow with the provided details.",
+        "tags": [
+          "import/flows"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlowObj",
+                "description": "Flow details."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Flow created successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/import/flows/{flowId}": {
+      "get": {
+        "summary": "Get a flow by ID.",
+        "description": "Retrieve details of a specific flow by its ID.",
+        "tags": [
+          "import/flows"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flowId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the flow to retrieve."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Flow details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlowObj"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "Flow not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Update a flow.",
+        "description": "Update details of a specific flow by its ID.",
+        "tags": [
+          "import/flows"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flowId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the flow to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlowObj",
+                "description": "Updated flow details."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Flow updated successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a flow.",
+        "description": "Delete a specific flow by its ID.",
+        "tags": [
+          "import/flows"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flowId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the flow to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Flow deleted successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/api/v1/import/flows/{flowId}/start": {
+      "post": {
+        "summary": "Start a flow.",
+        "description": "Start a specific flow by its ID.",
+        "tags": [
+          "import/flows"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flowId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the flow to start."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Flow started successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/api/v1/import/flows/{flowId}/stop": {
+      "post": {
+        "summary": "Stop a flow.",
+        "description": "Stop a specific flow by its ID.",
+        "tags": [
+          "import/flows"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flowId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the flow to stop."
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "force": {
+                    "type": "boolean",
+                    "description": "Whether to force stop the flow."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Flow stopped successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/api/v1/import/flows/{flowId}/status": {
+      "get": {
+        "summary": "Get the status of a flow.",
+        "description": "Retrieve the current status of a specific flow by its ID.",
+        "tags": [
+          "import/flows"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flowId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the flow to retrieve the status for."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Flow status retrieved successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "Flow not found."
+          }
+        }
+      }
+    },
+    "/api/v1/import/models": {
+      "get": {
+        "summary": "Get models listing",
+        "description": "Retrieve a list of all models with optional parsing, flattening, and read-only filters.",
+        "tags": [
+          "import/models"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "parse",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to parse the models."
+          },
+          {
+            "in": "query",
+            "name": "flat",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to flatten the models."
+          },
+          {
+            "in": "query",
+            "name": "read_only",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to retrieve models in read-only mode."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of models.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelObj"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      },
+      "put": {
+        "summary": "Create a model",
+        "description": "Create a new model with the provided data.",
+        "tags": [
+          "import/models"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelObj"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created model."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/api/v1/import/models/{modelId}": {
+      "get": {
+        "summary": "Get a model by ID",
+        "description": "Retrieve a specific model by its ID with optional parsing.",
+        "tags": [
+          "import/models"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "modelId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the model to retrieve."
+          },
+          {
+            "in": "query",
+            "name": "parse",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to parse the model."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested model.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelObj"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "Model not found."
+          }
+        }
+      },
+      "post": {
+        "summary": "Update a model",
+        "description": "Update an existing model by its ID with the provided data.",
+        "tags": [
+          "import/models"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "modelId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the model to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelObj"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated model."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a model",
+        "description": "Delete a specific model by its ID.",
+        "tags": [
+          "import/models"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "modelId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the model to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Model deleted successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/api/v1/import/models/parse": {
+      "post": {
+        "summary": "Get mapping preview",
+        "description": "Parse and retrieve a mapping preview based on the provided mapping data.",
+        "tags": [
+          "import/models"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mapping": {
+                    "type": "string",
+                    "description": "The mapping data to parse."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The mapping preview."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/api/v1/import/models/{modelId}/mapping": {
+      "get": {
+        "summary": "Get a model's mapping",
+        "description": "Retrieve the mapping of a specific model by its ID with optional parsing.",
+        "tags": [
+          "import/models"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "modelId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the model to retrieve the mapping for."
+          },
+          {
+            "in": "query",
+            "name": "parse",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to parse the mapping."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The model's mapping."
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "Mapping not found."
+          }
+        }
+      }
+    },
+    "/api/v1/import/sources": {
+      "get": {
+        "summary": "Get sources listing",
+        "description": "Retrieve a list of sources. Optionally filter by type or flatten the response.",
+        "tags": [
+          "import/sources"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "flat",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to flatten the response."
+          },
+          {
+            "in": "query",
+            "name": "read_only",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to retrieve read-only sources."
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter sources by type."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "When flat is true, returns a flat list of sources. Otherwise, returns a dictionary of sources.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SourceObj"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      },
+      "put": {
+        "summary": "Create a source",
+        "description": "Create a new source with optional file upload.",
+        "tags": [
+          "import/sources"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceObj"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Source created successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "403": {
+            "description": "Forbidden."
+          }
+        }
+      }
+    },
+    "/api/v1/import/sources/{sourceId}": {
+      "get": {
+        "summary": "Get source by ID",
+        "description": "Retrieve a source by its ID.",
+        "tags": [
+          "import/sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the source."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The source object."
+          },
+          "404": {
+            "description": "Source not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Update a source",
+        "description": "Update an existing source by its ID.",
+        "tags": [
+          "import/sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the source."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceObj"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Source updated successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "403": {
+            "description": "Forbidden."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a source",
+        "description": "Delete a source by its ID.",
+        "tags": [
+          "import/sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the source."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Source deleted successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/api/v1/import/sources/{sourceId}/getDownloadUrl": {
+      "get": {
+        "summary": "Get source download URL",
+        "description": "Retrieve a signed URL for downloading the file associated with a source.",
+        "tags": [
+          "import/sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the source."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The signed download URL."
+          },
+          "404": {
+            "description": "Source or file not found."
+          },
+          "406": {
+            "description": "Not acceptable."
+          }
+        }
+      }
+    },
+    "/api/v1/import/uploads/signed-url": {
+      "post": {
+        "summary": "Get a signed URL for uploading",
+        "description": "Generates a signed URL for the frontend to upload a file directly to the storage provider.",
+        "tags": [
+          "import/uploads"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Signed URL generated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "uploadId": {
+                      "type": "string",
+                      "description": "The unique ID for the upload."
+                    },
+                    "expiredAt": {
+                      "type": "number",
+                      "description": "The expiration time of the upload."
+                    },
+                    "signedUrl": {
+                      "type": "string",
+                      "description": "The signed URL for uploading the file."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. An error occurred while generating the signed URL.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "Error message"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/wizard": {
+      "put": {
+        "summary": "Create a flow.",
+        "description": "Creates a flow based on the provided source data. The user must have the appropriate license and access permissions.",
+        "tags": [
+          "import/wizard"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "source",
+                  "model"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "description": "JSON string representing the source data."
+                  },
+                  "model": {
+                    "type": "string",
+                    "description": "JSON string representing the model data."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully created or updated the flow.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "The result of the operation."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. The input data is invalid."
+          },
+          "403": {
+            "description": "Forbidden. The user does not have the required permissions."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "License": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "License unique identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "License name"
+          },
+          "desc": {
+            "type": "string",
+            "description": "License description"
+          },
+          "owned_domain_available": {
+            "type": "boolean",
+            "description": "Whether owned domain is available"
+          },
+          "project_permission_type_limit": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of allowed project permission types"
+          },
+          "project_expired_days_limit": {
+            "type": "integer",
+            "description": "Project expiration days limit"
+          },
+          "projects_count_limit": {
+            "type": "integer",
+            "description": "Maximum number of projects allowed"
+          },
+          "projects_external_count_limit": {
+            "type": "integer",
+            "description": "Maximum number of external projects allowed"
+          },
+          "members_limit": {
+            "type": "integer",
+            "description": "Maximum number of members allowed"
+          },
+          "license_expire_days_default": {
+            "type": "integer",
+            "description": "Default license expiration days"
+          },
+          "parser_source_enabled": {
+            "type": "boolean",
+            "description": "Whether parser source is enabled"
+          },
+          "feature_add_ons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of enabled feature add-ons"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          },
+          "deleted_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Deletion timestamp (if deleted)"
+          }
+        }
+      },
+      "Playbook": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "Unique identifier for the playbook."
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the playbook."
+          },
+          "desc": {
+            "type": "string",
+            "description": "Description of the playbook."
+          },
+          "owner_id": {
+            "type": "string",
+            "description": "User ID of the playbook owner."
+          },
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace ID associated with the playbook."
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Project ID associated with the playbook."
+          },
+          "protected": {
+            "type": "boolean",
+            "description": "Indicates if the playbook is protected from edits/deletion."
+          },
+          "version": {
+            "type": "string",
+            "description": "Version of the playbook."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "actionable",
+              "scheduled"
+            ],
+            "description": "Type of the playbook."
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "private",
+              "project",
+              "workspace"
+            ],
+            "description": "Permission level of the playbook."
+          },
+          "actions": {
+            "type": "array",
+            "description": "List of actions in the playbook.",
+            "items": {
+              "type": "object"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp."
+          },
+          "updated_by": {
+            "type": "string",
+            "description": "User ID of the last updater."
+          },
+          "deleted_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Deletion timestamp, if deleted."
+          }
+        }
+      },
+      "SourceObj": {
+        "anyOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "field_type_instruct": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "field_transform": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "fileKey": {
+                    "type": "string"
+                  },
+                  "uploadId": {
+                    "type": "string"
+                  },
+                  "encoding": {
+                    "type": "string"
+                  },
+                  "originalFields": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string"
+                        },
+                        "sourceFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1000
+                  }
+                },
+                "required": []
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ],
+            "description": "json"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "field_type_instruct": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "field_transform": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "fileKey": {
+                    "type": "string"
+                  },
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "uploadId": {
+                    "type": "string"
+                  },
+                  "filesize": {
+                    "type": "integer"
+                  },
+                  "encoding": {
+                    "type": "string"
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1000
+                  },
+                  "delimiter": {
+                    "type": "string",
+                    "minLength": 1,
+                    "default": ","
+                  },
+                  "string_delimiter": {
+                    "type": "string",
+                    "minLength": 1,
+                    "default": "\""
+                  },
+                  "skip_lines": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  }
+                },
+                "required": []
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ],
+            "description": "csv"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "field_type_instruct": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "field_transform": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "scheme": {
+                    "type": "string",
+                    "enum": [
+                      "http",
+                      "https"
+                    ],
+                    "default": "https"
+                  },
+                  "host": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "port": {
+                    "type": "integer",
+                    "default": 8089
+                  },
+                  "timeout": {
+                    "type": "integer",
+                    "default": 1000
+                  },
+                  "auth": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "username": {
+                            "type": "string",
+                            "pattern": "^(?!\\s*$).+"
+                          },
+                          "password": {
+                            "type": "string",
+                            "pattern": "^(?!\\s*$).+"
+                          }
+                        },
+                        "required": [
+                          "username",
+                          "password"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "token": {
+                            "type": "string",
+                            "pattern": "^(?!\\s*$).+"
+                          }
+                        },
+                        "required": [
+                          "token"
+                        ]
+                      }
+                    ]
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1000
+                  }
+                },
+                "required": [
+                  "scheme",
+                  "host",
+                  "port",
+                  "auth"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "splunk"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "field_type_instruct": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "field_transform": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "host": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "port": {
+                    "type": "integer",
+                    "default": 3306
+                  },
+                  "username": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "password": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "database": {
+                    "type": "string",
+                    "minimum": 1
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "default": 1000
+                  }
+                },
+                "required": [
+                  "host",
+                  "port",
+                  "username",
+                  "password"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "mysql"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "field_type_instruct": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "field_transform": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "host": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "port": {
+                    "type": "integer",
+                    "default": 5432
+                  },
+                  "username": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "password": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "database": {
+                    "type": "string",
+                    "minimum": 1
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "default": 1000
+                  }
+                },
+                "required": [
+                  "host",
+                  "port",
+                  "username",
+                  "password"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "postgresql"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "field_type_instruct": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "field_transform": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "host": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "port": {
+                    "type": "integer",
+                    "default": 1433
+                  },
+                  "username": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "password": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "database": {
+                    "type": "string",
+                    "minimum": 1
+                  },
+                  "trustServerCertificate": {
+                    "type": "boolean"
+                  },
+                  "caFile": {
+                    "type": "string"
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "default": 1000
+                  }
+                },
+                "required": [
+                  "host",
+                  "port",
+                  "username",
+                  "password",
+                  "database"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "mssql"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "projectId": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "datasetId": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "keyFile": {
+                    "type": "string"
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "default": 1000
+                  }
+                },
+                "required": [
+                  "projectId"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "bigquery"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "field_type_instruct": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "field_transform": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "salesforce_url": {
+                    "type": "string"
+                  },
+                  "salesforce_username": {
+                    "type": "string"
+                  },
+                  "salesforce_password": {
+                    "type": "string"
+                  },
+                  "salesforce_security_token": {
+                    "type": "string"
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "default": 1000
+                  }
+                },
+                "required": [
+                  "salesforce_url",
+                  "salesforce_username",
+                  "salesforce_password",
+                  "salesforce_security_token"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "salesforce"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "field_type_instruct": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "field_transform": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "servernode": {
+                    "type": "string"
+                  },
+                  "uid": {
+                    "type": "string"
+                  },
+                  "pwd": {
+                    "type": "string"
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "default": 1000
+                  }
+                },
+                "required": [
+                  "servernode",
+                  "uid",
+                  "pwd"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "hana"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "field_type_instruct": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "field_transform": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "table_ids": {
+                "type": "array",
+                "minItems": 0,
+                "nullable": false,
+                "items": {}
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "account": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "username": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "password": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "database": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "schema": {
+                    "type": "string"
+                  },
+                  "warehouse": {
+                    "type": "string"
+                  },
+                  "accessUrl": {
+                    "type": "string"
+                  },
+                  "batch_size": {
+                    "type": "integer",
+                    "default": 1000
+                  }
+                },
+                "required": [
+                  "account",
+                  "username",
+                  "password"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "snowflake"
+          }
+        ]
+      },
+      "CommandObj": {
+        "anyOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "default": "splunk"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "application": {
+                    "type": "string",
+                    "default": "search"
+                  },
+                  "earliest_time": {
+                    "type": "string"
+                  },
+                  "latest_time": {
+                    "type": "string"
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "query",
+                  "application"
+                ]
+              },
+              "schedule": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "splunk"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "default": "mysql"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              },
+              "schedule": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "mysql"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "default": "postgresql"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              },
+              "schedule": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "postgresql"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "default": "mssql"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              },
+              "schedule": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "mssql"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "default": "bigquery"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "destinationTable": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "destinationDataset": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              },
+              "schedule": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "bigquery"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "default": "salesforce"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "salesforce_query": {
+                    "type": "string"
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "salesforce_query"
+                ]
+              },
+              "schedule": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "salesforce"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "default": "hana"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              },
+              "schedule": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "hana"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "default": "snowflake"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "pattern": "^(?!\\s*$).+"
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              },
+              "schedule": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "config"
+            ],
+            "description": "snowflake"
+          }
+        ]
+      },
+      "ModelObj": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "default": "default"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "mapping"
+        ]
+      },
+      "FlowObj": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "command_id": {
+            "type": "string"
+          },
+          "model_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "source_id",
+          "model_id"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}
