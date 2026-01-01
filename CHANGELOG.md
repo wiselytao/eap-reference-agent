@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.25
+
+### Changed
+- Follow-up queries now include missing items/fields and are rewritten by LLM into a single question.
+
 ## v1.24
 
 ### Fixed

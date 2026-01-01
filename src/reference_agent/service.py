@@ -73,7 +73,7 @@ class ReferenceAgentService:
         self.executor = StrategyExecutor(
             self.tools, self.tool_health, self.composer, self.config.runtime.timeout_seconds
         )
-        self.bounded_executor = BoundedExecutor(self.executor, self.evaluator)
+        self.bounded_executor = BoundedExecutor(self.executor, self.evaluator, plan_llm, plan_model)
 
     def ask(self, request: AskRequest) -> AskResponse:
         profile = self._get_profile(request.profile_id)
