@@ -124,6 +124,7 @@ class ReferenceAgentService:
             final_status=final_status,
             evidence=evidence,
             evaluations=result.evaluations,
+            queried_tools_by_step=self._group_tools_by_step(result.steps),
             user_visible_notes=[],
         )
         self.trace_store.save(trace)
@@ -188,6 +189,19 @@ class ReferenceAgentService:
             else:
                 health.failure_count = 0
                 health.healthy = True
+
+    @staticmethod
+    def _group_tools_by_step(steps: list[StepRecord]) -> list[list[str]]:
+        grouped: list[list[str]] = []
+        for step in steps:
+            if not step.step_id:
+                continue
+            parts = step.step_id.split(":")
+            if not parts:
+                continue
+            tool_id = step.tool_id or parts[0]
+            grouped.append([tool_id])
+        return grouped
 
     def _ensure_profiling(self, profile: Profile, force: bool = False, tool_ids: list[str] | None = None) -> None:
         changed_tool_ids = self._detect_changed_tools()

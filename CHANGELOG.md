@@ -2,6 +2,21 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.24
+
+### Fixed
+- Align no-progress evaluation check with renamed `missing_fields`.
+
+## v1.23
+
+### Added
+- Trace now includes `queried_tools_by_step` for each round.
+
+## v1.22
+
+### Changed
+- Rename evaluation fields to `found_fields`/`missing_fields` (aliases keep old names).
+
 ## v1.21
 
 ### Changed

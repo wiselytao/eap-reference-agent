@@ -128,12 +128,13 @@ class StepRecord(BaseModel):
 
 
 class EvaluationRecord(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     step_id: str
     coverage_complete: bool
     covered_items: List[str] = Field(default_factory=list)
     missing_items: List[str] = Field(default_factory=list)
-    bindings_found: List[str] = Field(default_factory=list)
-    bindings_missing: List[str] = Field(default_factory=list)
+    found_fields: List[str] = Field(default_factory=list, alias="bindings_found")
+    missing_fields: List[str] = Field(default_factory=list, alias="bindings_missing")
     evidence_count: int = 0
     locator_ok: bool = False
     should_continue: bool = False
@@ -152,6 +153,7 @@ class Trace(BaseModel):
     plan_skeleton: Optional["PlanSkeleton"] = None
     plan_execution: Optional["PlanExecution"] = None
     evaluations: List[EvaluationRecord] = Field(default_factory=list)
+    queried_tools_by_step: List[List[str]] = Field(default_factory=list)
 
 
 class PlanSkeleton(BaseModel):

@@ -31,7 +31,7 @@ class Evaluator:
             fields_found = set(
                 item for item in required_fields if item.lower() in (answer or "").lower()
             )
-        bindings_missing = [item for item in required_fields if item not in fields_found]
+        missing_fields = [item for item in required_fields if item not in fields_found]
         locator_ok = all(self._locator_ok(item) for item in evidence)
         evidence_count = len(evidence)
         coverage_complete, covered_items, missing_items, notes = self._coverage(
@@ -40,7 +40,7 @@ class Evaluator:
         should_continue = self._should_continue(
             plan_skeleton.stop_conditions,
             coverage_complete,
-            bindings_missing,
+            missing_fields,
             evidence_count,
             evidence_min,
             locator_ok,
@@ -52,8 +52,8 @@ class Evaluator:
             coverage_complete=coverage_complete,
             covered_items=covered_items,
             missing_items=missing_items,
-            bindings_found=sorted(fields_found),
-            bindings_missing=bindings_missing,
+            found_fields=sorted(fields_found),
+            missing_fields=missing_fields,
             evidence_count=evidence_count,
             locator_ok=locator_ok,
             should_continue=should_continue,

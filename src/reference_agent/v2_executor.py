@@ -98,7 +98,7 @@ class BoundedExecutor:
             if idx > 1:
                 prev = evaluations[-2]
                 coverage_progress = len(evaluation.missing_items) < len(prev.missing_items)
-                binding_progress = len(evaluation.bindings_missing) < len(prev.bindings_missing)
+                binding_progress = len(evaluation.missing_fields) < len(prev.missing_fields)
                 if not coverage_progress and not binding_progress:
                     if (
                         evaluation.evidence_count >= profile.limits.evidence_min
@@ -106,12 +106,12 @@ class BoundedExecutor:
                     ):
                         evaluation.should_continue = False
             if idx < len(steps):
-                if evaluation.bindings_missing:
+                if evaluation.missing_fields:
                     current_query = (
-                        f"{query}\nMissing bindings: {', '.join(evaluation.bindings_missing)}"
+                        f"{query}\nMissing fields: {', '.join(evaluation.missing_fields)}"
                     )
-                elif evaluation.bindings_found:
-                    current_query = f"{query}\nIdentifiers: {', '.join(evaluation.bindings_found)}"
+                elif evaluation.found_fields:
+                    current_query = f"{query}\nIdentifiers: {', '.join(evaluation.found_fields)}"
             if not evaluation.should_continue:
                 break
 
