@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.27
+
+### Changed
+- Removed strict validation of rewritten follow-up queries.
+
+## v1.26
+
+### Changed
+- Validate LLM-rewritten follow-up queries to ensure all missing items are preserved.
+
 ## v1.25
 
 ### Changed
