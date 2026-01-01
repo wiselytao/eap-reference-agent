@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
+import asyncio
 from typing import Dict, Optional
 
 from reference_agent.adapters.llm import LLMClient
@@ -15,10 +16,16 @@ from reference_agent.models import (
     CapabilitiesResponse,
     Evidence,
     Profile,
+    ToolEntry,
     ToolHealth,
     Trace,
     ValidateRequest,
 )
+from reference_agent.planning import PlanSkeletonBuilder
+from reference_agent.profiling import ProfilingStore, RuntimeProber, question_set_for_tool
+from reference_agent.tools_fingerprint import tool_fingerprint, tools_md_hash
+from reference_agent.v2_executor import BoundedExecutor
+from reference_agent.v2_planner import BoundedPlanner
 from reference_agent.router import Router
 from reference_agent.secrets import resolve_secret
 from reference_agent.storage import FileTraceStore
@@ -28,6 +35,7 @@ from reference_agent.templates import get_template
 class ReferenceAgentService:
     def __init__(self, config_path: Path, tools_path: Path, profiles_dir: Path) -> None:
         self.config = load_config(config_path)
+        self.tools_path = tools_path
         self.tools = {tool.tool_id: tool for tool in load_tools_md(tools_path)}
         self.profiles = load_profiles(profiles_dir)
         env_tool_ids = [
@@ -41,21 +49,30 @@ class ReferenceAgentService:
         self.tool_health: Dict[str, ToolHealth] = {
             tool_id: ToolHealth(tool_id=tool_id) for tool_id in self.tools
         }
-        llm = LLMClient(
-            provider=self.config.llm.provider,
-            base_url=self.config.llm.base_url,
-            api_key=resolve_secret(self.config.llm.api_key_ref),
-            extra=self.config.llm.extra,
-        )
-        self.router = Router(llm, self.config.llm.model)
+        llm = self._build_llm_client(self.config.llm, self.config.llm.model)
+        plan_model = self.config.llm.plan_builder.model or self.config.llm.model
+        plan_llm = self._build_llm_client(self.config.llm.plan_builder, plan_model) or llm
+        eval_model = self.config.llm.evaluator.model or self.config.llm.model
+        eval_llm = self._build_llm_client(self.config.llm.evaluator, eval_model) or llm
+        self.plan_builder = PlanSkeletonBuilder(plan_llm, plan_model)
+        self.router = Router(plan_llm, plan_model)
+        self.bounded_planner = BoundedPlanner(self.router)
         self.composer = AnswerComposer(llm, self.config.llm.model)
         self.executor = StrategyExecutor(
             self.tools, self.tool_health, self.composer, self.config.runtime.timeout_seconds
         )
+        self.bounded_executor = BoundedExecutor(self.executor)
         self.trace_store = FileTraceStore(Path(self.config.audit.trace_dir))
+        self.eval_llm = eval_llm or llm
+        self.profiling_store = ProfilingStore(Path(self.config.profiling_dir))
+        self.prober = RuntimeProber(max_questions=3, timeout_seconds=self.config.runtime.timeout_seconds)
+        self._tools_hash_path = Path(self.config.profiling_dir) / ".tools_md.hash"
 
     def ask(self, request: AskRequest) -> AskResponse:
         profile = self._get_profile(request.profile_id)
+        self._ensure_profiling(profile)
+        plan_skeleton = self.plan_builder.build(request.query, profile, self.tools)
+        plan_execution = self.bounded_planner.build(request.query, profile, self.tools, request.context)
         router_output = (
             self.router.select_strategy(
                 request.query, profile, self.tools, self.tool_health, request.context
@@ -63,7 +80,7 @@ class ReferenceAgentService:
             if not request.strategy_id
             else self._manual_strategy(request.strategy_id, profile)
         )
-        result = self.executor.execute(router_output.strategy_id, request.query, profile)
+        result = self.bounded_executor.execute(plan_execution, request.query, profile, self.tools)
         evidence = sort_evidence(dedupe_evidence(result.evidence))
         evidence = evidence[: profile.limits.evidence_max]
 
@@ -85,6 +102,8 @@ class ReferenceAgentService:
             profile_id=profile.profile_id,
             profile_version=profile.version,
             router=router_output,
+            plan_skeleton=plan_skeleton,
+            plan_execution=plan_execution,
             steps=result.steps,
             final_status=final_status,
             evidence=evidence,
@@ -152,6 +171,97 @@ class ReferenceAgentService:
             else:
                 health.failure_count = 0
                 health.healthy = True
+
+    def _ensure_profiling(self, profile: Profile, force: bool = False, tool_ids: list[str] | None = None) -> None:
+        changed_tool_ids = self._detect_changed_tools()
+        if force:
+            changed_tool_ids = set(tool_ids or profile.enabled_tools)
+        elif tool_ids:
+            changed_tool_ids = set(tool_ids) & set(profile.enabled_tools)
+        for tool_id in profile.enabled_tools:
+            if changed_tool_ids is not None and tool_id not in changed_tool_ids and not force:
+                continue
+            tool = self.tools.get(tool_id)
+            if not tool:
+                continue
+            if tool.type == "external_mcp":
+                continue
+            if not force and changed_tool_ids is None and (tool.summary or tool.profile_summary):
+                continue
+            record = self.profiling_store.load_latest(tool.tool_id)
+            if record and record.profile_summary and not force:
+                tool.profile_summary = record.profile_summary
+                continue
+            questions = question_set_for_tool(tool)
+            record = self._run_probe(tool, questions)
+            tool.profile_summary = record.profile_summary
+            record.tool_hash = tool_fingerprint(tool)
+            self.profiling_store.save(record)
+        self._write_tools_hash()
+
+    def _run_probe(self, tool: ToolEntry, questions: list[str]):
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.prober.probe(tool, questions))
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(self.prober.probe(tool, questions), loop)
+            return future.result()
+        return loop.run_until_complete(self.prober.probe(tool, questions))
+
+    def _detect_changed_tools(self) -> set[str] | None:
+        current_hash = self._compute_tools_hash()
+        stored_hash = self._read_tools_hash()
+        if stored_hash and stored_hash == current_hash:
+            return None
+        changed = set()
+        for tool_id, tool in self.tools.items():
+            record = self.profiling_store.load_latest(tool_id)
+            fingerprint = tool_fingerprint(tool)
+            if not record or record.tool_hash != fingerprint:
+                changed.add(tool_id)
+        return changed
+
+    def _compute_tools_hash(self) -> str:
+        contents = self.tools_path.read_text() if self.tools_path.exists() else ""
+        return tools_md_hash(contents)
+
+    def _read_tools_hash(self) -> str | None:
+        if not self._tools_hash_path.exists():
+            return None
+        return self._tools_hash_path.read_text().strip() or None
+
+    def _write_tools_hash(self) -> None:
+        current_hash = self._compute_tools_hash()
+        self._tools_hash_path.write_text(current_hash)
+
+    def run_profiling(self, profile_id: str, force: bool = False, tool_ids: list[str] | None = None) -> dict:
+        profile = self._get_profile(profile_id)
+        self._ensure_profiling(profile, force=force, tool_ids=tool_ids)
+        return {"status": "ok"}
+
+    @staticmethod
+    def _build_llm_client(config, model_name):
+        if not config or not model_name:
+            return None
+        if isinstance(config, dict):
+            provider = config.get("provider")
+            base_url = config.get("base_url")
+            api_key_ref = config.get("api_key_ref")
+            extra = config.get("extra", {})
+        else:
+            provider = config.provider
+            base_url = config.base_url
+            api_key_ref = config.api_key_ref
+            extra = config.extra
+        if not provider or not model_name:
+            return None
+        return LLMClient(
+            provider=provider,
+            base_url=base_url,
+            api_key=resolve_secret(api_key_ref),
+            extra=extra,
+        )
 
     def _evidence_contract_ok(
         self, profile: Profile, evidence: list[Evidence], steps

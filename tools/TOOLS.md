@@ -11,6 +11,7 @@ tools:
     base_url: "https://demo.geminidata.com"
     auth_ref: "HYBRIDRAG_API_TOKEN"
     pipeline_prefix: "VECTOR:"
+    summary: "Demo vector dataset for document lookup."
     capabilities: ["vector_rag"]
     constraints:
       timeout_class: "standard"
@@ -25,6 +26,7 @@ tools:
     base_url: "https://demo.geminidata.com"
     auth_ref: "HYBRIDRAG_API_TOKEN"
     pipeline_prefix: "GRAPH:"
+    summary: "Demo graph dataset for relationship queries."
     capabilities: ["graph_rag"]
     constraints:
       timeout_class: "standard"
@@ -39,6 +41,7 @@ tools:
     base_url: "https://demo.geminidata.com"
     auth_ref: "HYBRIDRAG_API_TOKEN"
     pipeline_prefix: "HYBRID:"
+    summary: "Demo hybrid dataset combining vector and graph."
     capabilities: ["hybrid_rag", "answer_gen_builtin"]
     constraints:
       timeout_class: "standard"
@@ -52,6 +55,7 @@ tools:
     base_url: "https://demo.geminidata.com"
     auth_ref: "HYBRIDRAG_API_TOKEN"
     pipeline_prefix: "HYBRIDCOT:"
+    summary: "Demo hybridcot dataset for chain-of-thought style hybrid queries."
     capabilities: ["hybrid_cot", "answer_gen_builtin"]
     constraints:
       timeout_class: "standard"
@@ -64,6 +68,7 @@ tools:
     adapter: "mcp"
     base_url: "https://partner.example.com"
     auth_ref: "EXTERNAL_MCP_TOKEN"
+    summary: "External partner MCP source."
     capabilities: ["external_rag"]
     constraints:
       timeout_class: "standard"

@@ -2,6 +2,48 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.6
+
+### Added
+- Tool profiling invalidation based on `tools/TOOLS.md` changes and per-tool fingerprints.
+- Manual profiling triggers via CLI (`scripts/profile_tools.py`) and API (`POST /profiling/run`).
+
+### Changed
+- Profiling records now store `tool_hash` to detect tool definition updates.
+
+## v1.4
+
+### Added
+- v2 bounded planner and executor with templates T1/T2/T3 and plan execution trace.
+- Binding extraction for dependency-aware second-step queries.
+
+### Changed
+- Increase Hybrid RAG timeout to 300s for v2 probing and execution.
+
+## v1.3
+
+### Added
+- Profiling storage in `tools/profiling/` with `<tool_id>-MMDDHHmm` versioning.
+- Runtime probing for missing summaries (up to 3 parallel questions).
+
+### Changed
+- Router tool selection prefers tools with summaries/profiling data.
+- Tool entries support optional `summary` and `profile_summary`.
+
+## v1.2
+
+### Added
+- Plan Skeleton builder and trace storage of plan skeleton for v2 planning.
+
+### Changed
+- Tool entries now accept optional `summary` for profiling use.
+
+## v1.1
+
+### Changed
+- Move tool manifest to `tools/TOOLS.md` and add `tools/profiling/` directory for v2 profiling artifacts.
+- Add per-component LLM overrides in `config.yaml` (plan builder/evaluator).
+
 ## v1.0
 
 ### Added
@@ -19,4 +61,3 @@ All notable changes for this repository are documented here. Entries are based o
 ### Changed
 - Tool loading supports `TOOL_<id>_*` environment variables and prefers env tools when profiles use `enabled_tools: ["*"]`.
 - Trace router output expanded with intent, candidates, tool health snapshot, and selected tools.
-

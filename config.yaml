@@ -7,10 +7,26 @@ llm:
   max_tokens: 512
   extra:
     api_version: "2025-01-01-preview"
+  plan_builder:
+    provider: ""
+    base_url: ""
+    model: ""
+    api_key_ref: ""
+    temperature: 0.2
+    max_tokens: 512
+    extra: {}
+  evaluator:
+    provider: ""
+    base_url: ""
+    model: ""
+    api_key_ref: ""
+    temperature: 0.2
+    max_tokens: 512
+    extra: {}
 
 runtime:
   streaming_default: false
-  timeout_seconds: 60
+  timeout_seconds: 300
   concurrency: 4
 
 audit:
@@ -23,3 +39,5 @@ security:
 
 observability:
   log_level: "INFO"
+
+profiling_dir: "tools/profiling"

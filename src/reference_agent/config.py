@@ -11,6 +11,16 @@ from pydantic import BaseModel, Field
 from reference_agent.models import ToolEntry, Profile
 
 
+class LLMComponentConfig(BaseModel):
+    provider: Optional[str] = None
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+    api_key_ref: Optional[str] = None
+    temperature: float = 0.2
+    max_tokens: int = 512
+    extra: Dict[str, Any] = Field(default_factory=dict)
+
+
 class LLMConfig(BaseModel):
     provider: str
     base_url: Optional[str] = None
@@ -19,6 +29,8 @@ class LLMConfig(BaseModel):
     temperature: float = 0.2
     max_tokens: int = 512
     extra: Dict[str, Any] = Field(default_factory=dict)
+    plan_builder: LLMComponentConfig = Field(default_factory=LLMComponentConfig)
+    evaluator: LLMComponentConfig = Field(default_factory=LLMComponentConfig)
 
 
 class RuntimeConfig(BaseModel):
@@ -46,6 +58,7 @@ class AppConfig(BaseModel):
     audit: AuditConfig = Field(default_factory=AuditConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
+    profiling_dir: str = "tools/profiling"
 
 
 def load_yaml(path: Path) -> Dict[str, Any]:
@@ -121,6 +134,7 @@ def _rag_to_prefix(rag_type: str) -> Optional[str]:
         "GRAPH": "GRAPH:",
         "HYBRID": "HYBRID:",
         "HYBRIDCOT": "HYBRIDCOT:",
+        "SQL": "SQL:",
     }
     return mapping.get(rag_type)
 

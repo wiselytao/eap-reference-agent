@@ -46,6 +46,45 @@ class StrategyExecutor:
             return self._run_external_fork_join(query, profile)
         raise ValueError(f"Unsupported strategy: {strategy_id}")
 
+    def call_tool(self, tool: ToolEntry, query: str) -> Tuple[str, List[Evidence], StepRecord]:
+        if tool.type == "external_mcp":
+            return self._call_external(tool, query)
+        prefix = tool.pipeline_prefix or ""
+        return self._call_hybrid(tool, prefix, query)
+
+    def compose_external(
+        self, query: str, local_answer: str, external_answer: str, evidence: List[Evidence]
+    ) -> str:
+        return self._composer.compose_external(query, local_answer, external_answer, evidence)
+
+    def evaluate_status(
+        self, profile: Profile, tool: ToolEntry, evidence: List[Evidence], required: bool
+    ) -> str:
+        return self._evaluate_status(profile, tool, evidence, required)
+
+    def evaluate_fork_join_status(
+        self, profile: Profile, local_tool: ToolEntry, external_tool: ToolEntry, evidence: List[Evidence]
+    ) -> str:
+        return self._evaluate_fork_join_status(profile, local_tool, external_tool, evidence)
+
+    def call_fork_join(
+        self, profile: Profile, local_tool: ToolEntry, external_tool: ToolEntry, query: str
+    ) -> ExecutionResult:
+        steps: List[StepRecord] = []
+        evidence: List[Evidence] = []
+        local_answer = ""
+        external_answer = ""
+        local_answer, local_evidence, local_step = self._call_hybrid(
+            local_tool, local_tool.pipeline_prefix or "", query
+        )
+        external_answer, external_evidence, external_step = self._call_external(external_tool, query)
+        evidence.extend(local_evidence)
+        evidence.extend(external_evidence)
+        steps.extend([local_step, external_step])
+        answer = self.compose_external(query, local_answer, external_answer, evidence)
+        status = self.evaluate_fork_join_status(profile, local_tool, external_tool, evidence)
+        return ExecutionResult(answer, evidence, steps, status)
+
     def _run_single_prefix(
         self, prefix: str, query: str, profile: Profile, strategy_id: str
     ) -> ExecutionResult:

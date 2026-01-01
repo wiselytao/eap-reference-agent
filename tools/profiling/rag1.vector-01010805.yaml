@@ -1,0 +1,25 @@
+tool_id: rag1.vector
+generated_at: '2026-01-01T08:05:32'
+pipeline_prefix: 'VECTOR:'
+questions:
+- What topics does this dataset cover?
+- Provide example questions this dataset can answer.
+- What time range or scope is included?
+profile_summary: 'Q: What topics does this dataset cover?
+
+  A: This dataset covers topics such as software security vulnerabilities, risk assessment
+  (likelihood and impact), Fortify scan results, secure coding rules, and privacy
+  issues like information exposure a...
+
+
+  Q: Provide example questions this dataset can answer.
+
+  A: Here are example questions this dataset can answer: - What vulnerabilities are
+  present in jQuery 2.1.4? - How should input validation be implemented for web applications?
+  - What risks exist with query...
+
+
+  Q: What time range or scope is included?
+
+  A: The included time range or scope is from 2008 to July 14, 2025, based on the
+  document dates and copyright information provided.'

@@ -1,0 +1,17 @@
+tool_id: rag4.hybridcot
+generated_at: '2026-01-01T08:11:30'
+pipeline_prefix: 'HYBRIDCOT:'
+questions:
+- What topics does this dataset cover?
+- Provide example questions this dataset can answer.
+- What time range or scope is included?
+profile_summary: "Q: What topics does this dataset cover?\nA: This dataset covers\
+  \ a wide range of topics related to cyber threat intelligence, including:  --- \
+  \ ### 1. Intrusion Techniques and Attack Patterns - Detailed descriptions of attack\
+  \ techniques, includin...\n\nQ: Provide example questions this dataset can answer.\n\
+  A: Here are example questions that this dataset can answer, strictly based on the\
+  \ provided context:  ---  ### Attack Patterns, Tactics, and IDs - **Which attack\
+  \ patterns are associated with the \u2018Executio...\n\nQ: What time range or scope\
+  \ is included?\nA: **Time Range and Scope Included in the Data**  Based strictly\
+  \ on the provided data, the time-related scope covers the following:  ---  ### 1.\
+  \ **Cyber Espionage and Intrusion Campaigns**  | Campaign Na..."

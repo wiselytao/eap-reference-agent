@@ -34,6 +34,8 @@ class ToolEntry(BaseModel):
     base_url: Optional[str] = None
     auth_ref: Optional[str] = None
     pipeline_prefix: Optional[str] = None
+    summary: Optional[str] = None
+    profile_summary: Optional[str] = None
     capabilities: List[str] = Field(default_factory=list)
     constraints: ToolConstraints = Field(default_factory=ToolConstraints)
     evidence_contract: EvidenceContract = "OPTIONAL"
@@ -132,6 +134,32 @@ class Trace(BaseModel):
     final_status: FinalStatus
     evidence: List[Evidence] = Field(default_factory=list)
     user_visible_notes: List[str] = Field(default_factory=list)
+    plan_skeleton: Optional["PlanSkeleton"] = None
+    plan_execution: Optional["PlanExecution"] = None
+
+
+class PlanSkeleton(BaseModel):
+    answer_blueprint: List[str]
+    required_bindings: List[str]
+    candidate_tools: List[str]
+    constraints: Dict[str, Any] = Field(default_factory=dict)
+    stop_conditions: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
+class PlanStep(BaseModel):
+    step_id: str
+    template: str
+    tool_id: Optional[str] = None
+    pipeline_prefix: Optional[str] = None
+    input_hint: Optional[str] = None
+    bindings_used: List[str] = Field(default_factory=list)
+
+
+class PlanExecution(BaseModel):
+    template: str
+    steps: List[PlanStep]
+    notes: Optional[str] = None
 
 
 class AskRequest(BaseModel):
@@ -151,6 +179,12 @@ class AskResponse(BaseModel):
 class ValidateRequest(BaseModel):
     trace_id: Optional[str] = None
     evidence_ref: Optional[EvidenceLocator] = None
+
+
+class ProfilingRunRequest(BaseModel):
+    profile_id: str
+    force: bool = False
+    tool_ids: Optional[List[str]] = None
 
 
 class CapabilitiesResponse(BaseModel):

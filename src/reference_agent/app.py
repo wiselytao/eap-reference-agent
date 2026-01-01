@@ -5,13 +5,13 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 
-from reference_agent.models import AskRequest, AskResponse, ValidateRequest
+from reference_agent.models import AskRequest, AskResponse, ProfilingRunRequest, ValidateRequest
 from reference_agent.service import ReferenceAgentService
 
 
 def build_service() -> ReferenceAgentService:
     config_path = Path(os.getenv("REFERENCE_AGENT_CONFIG", "config.yaml"))
-    tools_path = Path(os.getenv("REFERENCE_AGENT_TOOLS", "TOOLS.md"))
+    tools_path = Path(os.getenv("REFERENCE_AGENT_TOOLS", "tools/TOOLS.md"))
     profiles_dir = Path(os.getenv("REFERENCE_AGENT_PROFILES", "profiles"))
     return ReferenceAgentService(config_path, tools_path, profiles_dir)
 
@@ -41,6 +41,12 @@ def create_app() -> FastAPI:
     @app.get("/capabilities")
     def capabilities(profile_id: str):
         return service.capabilities(profile_id)
+
+    @app.post("/profiling/run")
+    def run_profiling(request: ProfilingRunRequest):
+        return service.run_profiling(
+            request.profile_id, force=request.force, tool_ids=request.tool_ids
+        )
 
     @app.post("/mcp/reference.ask")
     def mcp_ask(request: AskRequest):

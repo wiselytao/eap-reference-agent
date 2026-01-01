@@ -81,6 +81,9 @@ class Router:
             return "citation"
         return "unknown"
 
+    def detect_intent(self, query: str) -> str:
+        return self._detect_intent(query)
+
     def _apply_profile_and_health(
         self,
         strategy_id: str,
@@ -154,11 +157,20 @@ class Router:
     def _tool_ids_by_prefix(
         self, profile: Profile, tools: Dict[str, ToolEntry], prefix: str
     ) -> List[str]:
-        return [
+        candidates = [
             tool_id
             for tool_id in profile.enabled_tools
             if tool_id in tools and tools[tool_id].pipeline_prefix == prefix
         ]
+        return sorted(
+            candidates,
+            key=lambda tool_id: (
+                0
+                if (tools[tool_id].profile_summary or tools[tool_id].summary)
+                else 1,
+                profile.enabled_tools.index(tool_id),
+            ),
+        )
 
     def _selected_tools(
         self, strategy_id: str, profile: Profile, tools: Dict[str, ToolEntry]

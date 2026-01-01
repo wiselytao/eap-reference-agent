@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 WorkingDirectory=/opt/reference-agent
 Environment=REFERENCE_AGENT_CONFIG=/opt/reference-agent/config.yaml
-Environment=REFERENCE_AGENT_TOOLS=/opt/reference-agent/TOOLS.md
+Environment=REFERENCE_AGENT_TOOLS=/opt/reference-agent/tools/TOOLS.md
 Environment=REFERENCE_AGENT_PROFILES=/opt/reference-agent/profiles
 Environment=OPENAI_API_KEY=CHANGE_ME
 Environment=HYBRIDRAG_API_TOKEN=CHANGE_ME

@@ -18,7 +18,7 @@ uvicorn reference_agent.main:app --host 0.0.0.0 --port 8080
 
 Configuration files:
 - `config.yaml`
-- `TOOLS.md`
+- `tools/TOOLS.md`
 - `profiles/default.yaml`
 
 Override their paths with:
@@ -29,6 +29,12 @@ Override their paths with:
 Environment tools (optional):
 - `TOOL_<id>_BASE_URL` + `TOOL_<id>_KEY` + `TOOL_<id>_RAG` (VECTOR/GRAPH/HYBRID/HYBRIDCOT) will be loaded automatically.
   If a profile uses `enabled_tools: ["*"]` and env tools exist, only env tools are enabled.
+
+## Profiling (v2)
+- Profiling files are stored in `tools/profiling/` with filenames `<tool_id>-MMDDHHmm.yaml`.
+- If a tool has no `summary` in `tools/TOOLS.md`, runtime probing will ask up to 3 questions in parallel and save a profiling summary.
+- `TOOLS.md` changes trigger re-profiling for affected tools on the next request.
+- Manual profiling: `python scripts/profile_tools.py --profile default --force` (or `--tool-id <id>`).
 
 ## Docker
 ```bash

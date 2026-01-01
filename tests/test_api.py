@@ -25,6 +25,22 @@ llm:
   max_tokens: 32
   extra:
     endpoint: "/v1/chat/completions"
+  plan_builder:
+    provider: ""
+    base_url: ""
+    model: ""
+    api_key_ref: ""
+    temperature: 0.0
+    max_tokens: 32
+    extra: {}
+  evaluator:
+    provider: ""
+    base_url: ""
+    model: ""
+    api_key_ref: ""
+    temperature: 0.0
+    max_tokens: 32
+    extra: {}
 
 audit:
   trace_dir: "{trace_dir}"
@@ -49,6 +65,7 @@ tools:
     base_url: "http://example.com"
     auth_ref: "TEST_TOKEN"
     pipeline_prefix: "HYBRID:"
+    summary: "Test dataset for hybrid queries."
     capabilities: ["hybrid_rag"]
     constraints:
       timeout_class: "standard"
@@ -92,6 +109,7 @@ answer_policy:
 @pytest.mark.asyncio
 async def test_ask_endpoint(monkeypatch, temp_config):
     from reference_agent.adapters import hybridrag
+    from reference_agent.adapters.llm import LLMClient
 
     def fake_create_chat(self):
         return "chat123"
@@ -99,8 +117,20 @@ async def test_ask_endpoint(monkeypatch, temp_config):
     def fake_send_message(self, chat_id, question, streaming=False):
         return "Answer", "msg123"
 
+    def fake_llm(self, model, request):
+        return (
+            '{'
+            '"answer_blueprint": ["Test"], '
+            '"required_bindings": [], '
+            '"candidate_tools": [], '
+            '"constraints": {}, '
+            '"stop_conditions": []'
+            '}'
+        )
+
     monkeypatch.setattr(hybridrag.HybridRagClient, "create_chat", fake_create_chat)
     monkeypatch.setattr(hybridrag.HybridRagClient, "send_message", fake_send_message)
+    monkeypatch.setattr(LLMClient, "generate", fake_llm)
 
     app = create_app()
     transport = httpx.ASGITransport(app=app)
