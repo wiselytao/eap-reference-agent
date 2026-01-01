@@ -2,6 +2,21 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.13
+
+### Changed
+- Enforce inclusion of the PARTIAL notice in composed responses.
+
+## v1.12
+
+### Changed
+- PARTIAL responses now use AnswerComposer to format the response with the Hybrid RAG style prompt.
+
+## v1.11
+
+### Changed
+- AnswerComposer prompt aligned with Hybrid RAG answerGen template.
+
 ## v1.10
 
 ### Changed

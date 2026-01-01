@@ -108,7 +108,10 @@ class ReferenceAgentService:
         elif final_status == "EMPTY":
             answer = get_template(profile.answer_policy.no_evidence_template, request.query)
         elif final_status == "PARTIAL":
-            answer = get_template("TPL_PARTIAL_V1", request.query) + "\n\n" + answer
+            template = get_template("TPL_PARTIAL_V1", request.query)
+            answer = self.composer.compose_partial(request.query, answer, evidence, template)
+            if template not in answer:
+                answer = f"{template}\n\n{answer}"
 
         trace = Trace(
             trace_id=str(uuid.uuid4()),
