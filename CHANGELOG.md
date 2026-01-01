@@ -2,6 +2,21 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.10
+
+### Changed
+- Use evaluator results to downgrade incomplete answers to PARTIAL/EMPTY and prefer best step answer.
+
+## v1.9
+
+### Changed
+- Added profiling retry policy and separate profiling timeout settings.
+
+## v1.8
+
+### Added
+- Evaluator implementation with coverage/specificity/evidence checks and trace recording.
+
 ## v1.7
 
 ### Changed

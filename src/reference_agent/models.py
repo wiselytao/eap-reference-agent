@@ -125,6 +125,19 @@ class StepRecord(BaseModel):
     degraded: bool = False
 
 
+class EvaluationRecord(BaseModel):
+    step_id: str
+    coverage_complete: bool
+    covered_items: List[str] = Field(default_factory=list)
+    missing_items: List[str] = Field(default_factory=list)
+    bindings_found: List[str] = Field(default_factory=list)
+    bindings_missing: List[str] = Field(default_factory=list)
+    evidence_count: int = 0
+    locator_ok: bool = False
+    should_continue: bool = False
+    notes: Optional[str] = None
+
+
 class Trace(BaseModel):
     trace_id: str
     profile_id: str
@@ -136,6 +149,7 @@ class Trace(BaseModel):
     user_visible_notes: List[str] = Field(default_factory=list)
     plan_skeleton: Optional["PlanSkeleton"] = None
     plan_execution: Optional["PlanExecution"] = None
+    evaluations: List[EvaluationRecord] = Field(default_factory=list)
 
 
 class PlanSkeleton(BaseModel):

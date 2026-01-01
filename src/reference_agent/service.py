@@ -21,6 +21,7 @@ from reference_agent.models import (
     Trace,
     ValidateRequest,
 )
+from reference_agent.evaluator import Evaluator
 from reference_agent.planning import PlanSkeletonBuilder
 from reference_agent.profiling import ProfilingStore, RuntimeProber, question_set_for_tool
 from reference_agent.tools_fingerprint import tool_fingerprint, tools_md_hash
@@ -57,15 +58,21 @@ class ReferenceAgentService:
         self.plan_builder = PlanSkeletonBuilder(plan_llm, plan_model)
         self.router = Router(plan_llm, plan_model)
         self.bounded_planner = BoundedPlanner(self.router)
+        self.evaluator = Evaluator(eval_llm, eval_model)
         self.composer = AnswerComposer(llm, self.config.llm.model)
         self.executor = StrategyExecutor(
             self.tools, self.tool_health, self.composer, self.config.runtime.timeout_seconds
         )
-        self.bounded_executor = BoundedExecutor(self.executor)
+        self.bounded_executor = BoundedExecutor(self.executor, self.evaluator)
         self.trace_store = FileTraceStore(Path(self.config.audit.trace_dir))
         self.eval_llm = eval_llm or llm
         self.profiling_store = ProfilingStore(Path(self.config.profiling_dir))
-        self.prober = RuntimeProber(max_questions=3, timeout_seconds=self.config.runtime.timeout_seconds)
+        self.prober = RuntimeProber(
+            max_questions=3,
+            timeout_seconds=self.config.profiling_timeout_seconds,
+            max_retries=self.config.profiling_max_retries,
+            retry_backoff_seconds=self.config.profiling_retry_backoff_seconds,
+        )
         self._tools_hash_path = Path(self.config.profiling_dir) / ".tools_md.hash"
 
     def ask(self, request: AskRequest) -> AskResponse:
@@ -80,12 +87,18 @@ class ReferenceAgentService:
             if not request.strategy_id
             else self._manual_strategy(request.strategy_id, profile)
         )
-        result = self.bounded_executor.execute(plan_execution, request.query, profile, self.tools)
+        result = self.bounded_executor.execute(
+            plan_execution, plan_skeleton, request.query, profile, self.tools
+        )
         evidence = sort_evidence(dedupe_evidence(result.evidence))
         evidence = evidence[: profile.limits.evidence_max]
 
         final_status = result.status
         answer = result.answer
+        if result.evaluations:
+            needs_more = any(record.should_continue for record in result.evaluations)
+            if needs_more:
+                final_status = "PARTIAL" if evidence else "EMPTY"
         if not self._evidence_contract_ok(profile, evidence, result.steps):
             if final_status == "SUCCESS":
                 final_status = "EMPTY"
@@ -107,6 +120,7 @@ class ReferenceAgentService:
             steps=result.steps,
             final_status=final_status,
             evidence=evidence,
+            evaluations=result.evaluations,
             user_visible_notes=[],
         )
         self.trace_store.save(trace)

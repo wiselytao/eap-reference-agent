@@ -59,6 +59,9 @@ class AppConfig(BaseModel):
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     profiling_dir: str = "tools/profiling"
+    profiling_timeout_seconds: int = 300
+    profiling_max_retries: int = 2
+    profiling_retry_backoff_seconds: int = 2
 
 
 def load_yaml(path: Path) -> Dict[str, Any]:

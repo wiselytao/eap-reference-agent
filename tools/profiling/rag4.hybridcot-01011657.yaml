@@ -1,0 +1,27 @@
+tool_id: rag4.hybridcot
+generated_at: '2026-01-01T16:57:17'
+pipeline_prefix: 'HYBRIDCOT:'
+questions:
+- What topics does this dataset cover?
+- Provide 3 example questions this dataset can answer.
+- List key entities or concepts (5-10) that appear frequently.
+profile_summary: 'Q: What topics does this dataset cover?
+
+  A: This dataset covers a broad range of topics related to cyber threats and security.
+  Below is a structured summary of its main areas, strictly based on the provided
+  information:  ---  **1. Attack Patter...
+
+
+  Q: Provide 3 example questions this dataset can answer.
+
+  A: **Here are 3 example questions this dataset can answer:**  1. **Which intrusion
+  sets have been attributed to specific campaigns?**    - Example: Which group was
+  responsible for the 2015 Ukraine Electr...
+
+
+  Q: List key entities or concepts (5-10) that appear frequently.
+
+  A: Below are key entities and concepts that appear most frequently in the provided
+  data, organized by type and frequency:  ---  ### 1. **Top Frequent Node Labels (Entities
+  or Concepts)**  | Entity/Concep...'
+tool_hash: 33656065d849fca0e9945854fbeded73fc2fca87d5ab5f221279d5b419e98eca

@@ -41,3 +41,6 @@ observability:
   log_level: "INFO"
 
 profiling_dir: "tools/profiling"
+profiling_timeout_seconds: 300
+profiling_max_retries: 2
+profiling_retry_backoff_seconds: 2

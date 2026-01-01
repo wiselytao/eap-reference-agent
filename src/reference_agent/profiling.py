@@ -69,9 +69,17 @@ class ProfilingStore:
 
 
 class RuntimeProber:
-    def __init__(self, max_questions: int = 3, timeout_seconds: int = 60) -> None:
+    def __init__(
+        self,
+        max_questions: int = 3,
+        timeout_seconds: int = 60,
+        max_retries: int = 2,
+        retry_backoff_seconds: int = 2,
+    ) -> None:
         self.max_questions = max_questions
         self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
+        self.retry_backoff_seconds = retry_backoff_seconds
 
     async def probe(self, tool: ToolEntry, questions: List[str]) -> ProfilingRecord:
         prefix = tool.pipeline_prefix or ""
@@ -98,9 +106,16 @@ class RuntimeProber:
         )
         client = HybridRagClient(config)
         loop = asyncio.get_running_loop()
-        chat_id = await loop.run_in_executor(None, client.create_chat)
-        answer, _ = await loop.run_in_executor(None, client.send_message, chat_id, question)
-        return answer
+        for attempt in range(self.max_retries + 1):
+            try:
+                chat_id = await loop.run_in_executor(None, client.create_chat)
+                answer, _ = await loop.run_in_executor(None, client.send_message, chat_id, question)
+                return answer
+            except Exception:
+                if attempt >= self.max_retries:
+                    raise
+                await asyncio.sleep(self.retry_backoff_seconds * (attempt + 1))
+        return ""
 
     @staticmethod
     def _build_summary(questions: List[str], responses: List[str]) -> str:

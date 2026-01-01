@@ -5,20 +5,34 @@ from typing import Dict, List, Tuple
 
 from reference_agent.bindings import extract_bindings
 from reference_agent.executor import ExecutionResult, StrategyExecutor
-from reference_agent.models import Evidence, PlanExecution, PlanStep, Profile, ToolEntry
+from reference_agent.evaluator import Evaluator
+from reference_agent.models import Evidence, PlanExecution, PlanSkeleton, PlanStep, Profile, ToolEntry
 
 
 class BoundedExecutor:
-    def __init__(self, executor: StrategyExecutor) -> None:
+    def __init__(self, executor: StrategyExecutor, evaluator: Evaluator) -> None:
         self._executor = executor
+        self._evaluator = evaluator
 
-    def execute(self, plan: PlanExecution, query: str, profile: Profile, tools: Dict[str, ToolEntry]) -> ExecutionResult:
+    def execute(
+        self,
+        plan: PlanExecution,
+        plan_skeleton: PlanSkeleton,
+        query: str,
+        profile: Profile,
+        tools: Dict[str, ToolEntry],
+    ) -> ExecutionResult:
         if plan.template == "T3":
-            return self._execute_t3(plan, query, profile, tools)
-        return self._execute_sequential(plan.steps, query, profile, tools)
+            return self._execute_t3(plan, plan_skeleton, query, profile, tools)
+        return self._execute_sequential(plan.steps, plan_skeleton, query, profile, tools)
 
     def _execute_t3(
-        self, plan: PlanExecution, query: str, profile: Profile, tools: Dict[str, ToolEntry]
+        self,
+        plan: PlanExecution,
+        plan_skeleton: PlanSkeleton,
+        query: str,
+        profile: Profile,
+        tools: Dict[str, ToolEntry],
     ) -> ExecutionResult:
         external_tool = self._get_tool_by_prefix(plan.steps, tools, "EXTERNAL")
         local_tool = self._get_tool_by_prefix(plan.steps, tools, None)
@@ -35,15 +49,25 @@ class BoundedExecutor:
         steps = [external_step, local_step]
         answer = self._executor.compose_external(query, local_answer, external_answer, evidence)
         status = self._executor.evaluate_fork_join_status(profile, local_tool, external_tool, evidence)
-        return ExecutionResult(answer, evidence, steps, status)
+        evaluation = self._evaluator.evaluate(
+            plan_skeleton, answer, evidence, profile.limits.evidence_min, step_id="T3"
+        )
+        return ExecutionResult(answer, evidence, steps, status, evaluations=[evaluation])
 
     def _execute_sequential(
-        self, steps: List[PlanStep], query: str, profile: Profile, tools: Dict[str, ToolEntry]
+        self,
+        steps: List[PlanStep],
+        plan_skeleton: PlanSkeleton,
+        query: str,
+        profile: Profile,
+        tools: Dict[str, ToolEntry],
     ) -> ExecutionResult:
         evidence: List[Evidence] = []
         step_records = []
+        evaluations = []
         current_query = query
         last_tool = None
+        best_answer = ""
         for idx, step in enumerate(steps, start=1):
             tool = tools.get(step.tool_id or "")
             if not tool:
@@ -52,6 +76,17 @@ class BoundedExecutor:
             evidence.extend(step_evidence)
             step_records.append(step_record)
             last_tool = tool
+
+            evaluation = self._evaluator.evaluate(
+                    plan_skeleton,
+                    answer,
+                    evidence,
+                    profile.limits.evidence_min,
+                    step_id=step.step_id,
+                )
+            evaluations.append(evaluation)
+            if evaluation.coverage_complete and evaluation.evidence_count >= profile.limits.evidence_min:
+                best_answer = answer
 
             bindings = extract_bindings(answer)
             if bindings:
@@ -62,7 +97,9 @@ class BoundedExecutor:
         if not last_tool:
             return ExecutionResult("", evidence, step_records, "EMPTY")
         status = self._executor.evaluate_status(profile, last_tool, evidence, required=True)
-        return ExecutionResult(answer, evidence, step_records, status)
+        if best_answer:
+            answer = best_answer
+        return ExecutionResult(answer, evidence, step_records, status, evaluations=evaluations)
 
     @staticmethod
     def _get_tool_by_prefix(steps: List[PlanStep], tools: Dict[str, ToolEntry], prefix: str | None) -> ToolEntry | None:

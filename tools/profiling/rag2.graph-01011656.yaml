@@ -1,0 +1,23 @@
+tool_id: rag2.graph
+generated_at: '2026-01-01T16:56:50'
+pipeline_prefix: 'GRAPH:'
+questions:
+- List the node labels in this graph and describe each briefly.
+- List the relationship types and the allowed source/target labels for each.
+- For each node label, list key properties and provide 2-3 sample values.
+profile_summary: 'Q: List the node labels in this graph and describe each briefly.
+
+  A: Sorry, I couldn''t retrieve the data needed to answer your question.
+
+
+  Q: List the relationship types and the allowed source/target labels for each.
+
+  A: Here is a detailed list of relationship types in the graph schema, along with
+  their allowed source and target labels:  | Relationship Type            | Allowed
+  Source Labels           | Allowed Target...
+
+
+  Q: For each node label, list key properties and provide 2-3 sample values.
+
+  A: Sorry, I couldn''t retrieve the required data to answer your question.'
+tool_hash: 4735fbea8ab59734c55f68d12e36fd421b46b6ce5ba314511ebfe17afa1014fe
