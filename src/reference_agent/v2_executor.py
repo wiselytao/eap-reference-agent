@@ -50,7 +50,13 @@ class BoundedExecutor:
         answer = self._executor.compose_external(query, local_answer, external_answer, evidence)
         status = self._executor.evaluate_fork_join_status(profile, local_tool, external_tool, evidence)
         evaluation = self._evaluator.evaluate(
-            plan_skeleton, answer, evidence, profile.limits.evidence_min, step_id="T3"
+            plan_skeleton,
+            answer,
+            evidence,
+            profile.limits.evidence_min,
+            step_id="T3",
+            step_index=1,
+            max_steps=profile.limits.max_steps,
         )
         return ExecutionResult(answer, evidence, steps, status, evaluations=[evaluation])
 
@@ -83,10 +89,31 @@ class BoundedExecutor:
                     evidence,
                     profile.limits.evidence_min,
                     step_id=step.step_id,
+                    step_index=idx,
+                    max_steps=profile.limits.max_steps,
                 )
             evaluations.append(evaluation)
             if evaluation.coverage_complete and evaluation.evidence_count >= profile.limits.evidence_min:
                 best_answer = answer
+            if idx > 1:
+                prev = evaluations[-2]
+                coverage_progress = len(evaluation.missing_items) < len(prev.missing_items)
+                binding_progress = len(evaluation.bindings_missing) < len(prev.bindings_missing)
+                if not coverage_progress and not binding_progress:
+                    if (
+                        evaluation.evidence_count >= profile.limits.evidence_min
+                        and evaluation.locator_ok
+                    ):
+                        evaluation.should_continue = False
+            if idx < len(steps):
+                if evaluation.bindings_missing:
+                    current_query = (
+                        f"{query}\nMissing bindings: {', '.join(evaluation.bindings_missing)}"
+                    )
+                elif evaluation.bindings_found:
+                    current_query = f"{query}\nIdentifiers: {', '.join(evaluation.bindings_found)}"
+            if not evaluation.should_continue:
+                break
 
             bindings = extract_bindings(answer)
             if bindings:

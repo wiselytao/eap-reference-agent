@@ -2,6 +2,44 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.21
+
+### Changed
+- Adjusted stop_conditions: evidence stop requires coverage complete & no missing fields; no-progress step can stop when evidence is sufficient.
+
+## v1.20
+
+### Fixed
+- Initialize profiling store before Plan Skeleton builder to avoid startup error.
+
+## v1.19
+
+### Changed
+- Remove domain-specific required_fields defaults; use profiling schema when available or free-form fields otherwise.
+- Evaluator relies on semantic field mapping without hardcoded domain patterns.
+
+## v1.18
+
+### Added
+- required_fields now constrained by profiling schema (strict for Graph/SQL, weak fallback for others).
+- Evaluator uses LLM semantic mapping for required_fields when available.
+
+## v1.17
+
+### Changed
+- Rename Plan Skeleton field `required_bindings` to `required_fields` (backward-compatible parsing).
+- Rename router binding fields to `required_fields`/`provided_fields`/`missing_fields` (with aliases).
+
+## v1.15
+
+### Changed
+- Use bindings_missing to guide follow-up queries when bindings are not found.
+
+## v1.14
+
+### Changed
+- Evaluator now enforces stop_conditions and max_steps to decide whether to proceed to next steps.
+
 ## v1.13
 
 ### Changed

@@ -55,15 +55,6 @@ class ReferenceAgentService:
         plan_llm = self._build_llm_client(self.config.llm.plan_builder, plan_model) or llm
         eval_model = self.config.llm.evaluator.model or self.config.llm.model
         eval_llm = self._build_llm_client(self.config.llm.evaluator, eval_model) or llm
-        self.plan_builder = PlanSkeletonBuilder(plan_llm, plan_model)
-        self.router = Router(plan_llm, plan_model)
-        self.bounded_planner = BoundedPlanner(self.router)
-        self.evaluator = Evaluator(eval_llm, eval_model)
-        self.composer = AnswerComposer(llm, self.config.llm.model)
-        self.executor = StrategyExecutor(
-            self.tools, self.tool_health, self.composer, self.config.runtime.timeout_seconds
-        )
-        self.bounded_executor = BoundedExecutor(self.executor, self.evaluator)
         self.trace_store = FileTraceStore(Path(self.config.audit.trace_dir))
         self.eval_llm = eval_llm or llm
         self.profiling_store = ProfilingStore(Path(self.config.profiling_dir))
@@ -74,6 +65,15 @@ class ReferenceAgentService:
             retry_backoff_seconds=self.config.profiling_retry_backoff_seconds,
         )
         self._tools_hash_path = Path(self.config.profiling_dir) / ".tools_md.hash"
+        self.plan_builder = PlanSkeletonBuilder(plan_llm, plan_model, self.profiling_store)
+        self.router = Router(plan_llm, plan_model)
+        self.bounded_planner = BoundedPlanner(self.router)
+        self.evaluator = Evaluator(eval_llm, eval_model)
+        self.composer = AnswerComposer(llm, self.config.llm.model)
+        self.executor = StrategyExecutor(
+            self.tools, self.tool_health, self.composer, self.config.runtime.timeout_seconds
+        )
+        self.bounded_executor = BoundedExecutor(self.executor, self.evaluator)
 
     def ask(self, request: AskRequest) -> AskResponse:
         profile = self._get_profile(request.profile_id)

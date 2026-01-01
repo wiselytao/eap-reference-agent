@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
+from pydantic.config import ConfigDict
 
 ToolType = Literal["hybridrag_pipeline", "external_mcp"]
 AdapterType = Literal["hybridrag_chat_api_v1", "mcp"]
@@ -97,9 +98,10 @@ class Evidence(BaseModel):
 
 
 class RouterBindingReadiness(BaseModel):
-    required_bindings: List[str] = Field(default_factory=list)
-    provided_bindings: List[str] = Field(default_factory=list)
-    missing_bindings: List[str] = Field(default_factory=list)
+    model_config = ConfigDict(populate_by_name=True)
+    required_fields: List[str] = Field(default_factory=list, alias="required_bindings")
+    provided_fields: List[str] = Field(default_factory=list, alias="provided_bindings")
+    missing_fields: List[str] = Field(default_factory=list, alias="missing_bindings")
     dependency_required: bool = False
     resolution_policy: Optional[str] = None
 
@@ -154,7 +156,7 @@ class Trace(BaseModel):
 
 class PlanSkeleton(BaseModel):
     answer_blueprint: List[str]
-    required_bindings: List[str]
+    required_fields: List[str]
     candidate_tools: List[str]
     constraints: Dict[str, Any] = Field(default_factory=dict)
     stop_conditions: List[str] = Field(default_factory=list)

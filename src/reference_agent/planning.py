@@ -5,12 +5,16 @@ from typing import Dict, List
 
 from reference_agent.adapters.llm import LLMClient, LLMRequest
 from reference_agent.models import PlanSkeleton, Profile, ToolEntry
+from reference_agent.profiling import ProfilingStore
 
 
 class PlanSkeletonBuilder:
-    def __init__(self, llm: LLMClient | None, model: str | None) -> None:
+    def __init__(
+        self, llm: LLMClient | None, model: str | None, profiling_store: ProfilingStore | None = None
+    ) -> None:
         self._llm = llm
         self._model = model
+        self._profiling_store = profiling_store
 
     def build(self, query: str, profile: Profile, tools: Dict[str, ToolEntry]) -> PlanSkeleton:
         candidates = [tool_id for tool_id in profile.enabled_tools if tool_id in tools]
@@ -19,19 +23,29 @@ class PlanSkeletonBuilder:
             "evidence_min": profile.limits.evidence_min,
             "evidence_max": profile.limits.evidence_max,
         }
+        allowed_fields = self._allowed_fields(candidates, tools)
         if self._llm and self._model:
-            prompt = self._prompt(query, candidates, tools, constraints)
+            prompt = self._prompt(query, candidates, tools, constraints, allowed_fields)
             try:
                 response = self._llm.generate(self._model, LLMRequest(prompt, 0.0, 512))
                 parsed = self._parse(response)
                 if parsed:
+                    if allowed_fields:
+                        parsed.required_fields = [
+                            item for item in parsed.required_fields if item in allowed_fields
+                        ]
                     return parsed
             except Exception:
                 pass
         return self._fallback(query, candidates, constraints)
 
     def _prompt(
-        self, query: str, candidates: List[str], tools: Dict[str, ToolEntry], constraints: Dict[str, int]
+        self,
+        query: str,
+        candidates: List[str],
+        tools: Dict[str, ToolEntry],
+        constraints: Dict[str, int],
+        allowed_fields: List[str],
     ) -> str:
         tool_lines = []
         for tool_id in candidates:
@@ -40,11 +54,17 @@ class PlanSkeletonBuilder:
             if tool:
                 summary = tool.profile_summary or tool.summary or ""
             tool_lines.append(f"- {tool_id} ({tool.pipeline_prefix or 'UNKNOWN'}): {summary}")
+        allowed_note = (
+            f"required_fields must be chosen from this list only: {allowed_fields}\n\n"
+            if allowed_fields
+            else "required_fields may be any concise field names that the answer must include.\n\n"
+        )
         return (
             "You are building a Plan Skeleton for a bounded RAG planner. "
             "Return strict JSON with keys: answer_blueprint (list of strings), "
-            "required_bindings (list of strings), candidate_tools (list of strings), "
+            "required_fields (list of strings), candidate_tools (list of strings), "
             "constraints (object), stop_conditions (list of strings).\n\n"
+            f"{allowed_note}"
             f"Query: {query}\n\n"
             f"Candidate tools:\n{chr(10).join(tool_lines)}\n\n"
             f"Constraints: {json.dumps(constraints)}\n"
@@ -60,7 +80,7 @@ class PlanSkeletonBuilder:
         try:
             return PlanSkeleton(
                 answer_blueprint=data.get("answer_blueprint", []),
-                required_bindings=data.get("required_bindings", []),
+                required_fields=data.get("required_fields", data.get("required_bindings", [])),
                 candidate_tools=data.get("candidate_tools", []),
                 constraints=data.get("constraints", {}),
                 stop_conditions=data.get("stop_conditions", []),
@@ -72,9 +92,24 @@ class PlanSkeletonBuilder:
     def _fallback(self, query: str, candidates: List[str], constraints: Dict[str, int]) -> PlanSkeleton:
         return PlanSkeleton(
             answer_blueprint=["Answer the user query with verifiable evidence."],
-            required_bindings=[],
+            required_fields=[],
             candidate_tools=candidates,
             constraints=constraints,
             stop_conditions=["evidence_min_met", "step_budget_exhausted"],
             notes="Fallback plan skeleton.",
         )
+
+    def _allowed_fields(self, candidates: List[str], tools: Dict[str, ToolEntry]) -> List[str]:
+        schema_fields = []
+        for tool_id in candidates:
+            tool = tools.get(tool_id)
+            if not tool:
+                continue
+            if tool.pipeline_prefix in {"GRAPH:", "SQL:"}:
+                if self._profiling_store:
+                    record = self._profiling_store.load_latest(tool_id)
+                    if record and record.schema:
+                        schema_fields.extend(record.schema.get("fields", []))
+        if len(schema_fields) >= 3:
+            return sorted(set(schema_fields))
+        return []

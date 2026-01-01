@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -22,6 +22,7 @@ class ProfilingRecord:
     questions: List[str]
     profile_summary: str
     tool_hash: Optional[str] = None
+    schema: Dict[str, List[str]] = field(default_factory=dict)
 
 
 class ProfilingStore:
@@ -44,6 +45,7 @@ class ProfilingStore:
                 questions=data.get("questions", []),
                 profile_summary=data.get("profile_summary", ""),
                 tool_hash=data.get("tool_hash"),
+                schema=data.get("schema", {}) or {},
             )
         except Exception:
             return None
@@ -59,6 +61,7 @@ class ProfilingStore:
             "questions": record.questions,
             "profile_summary": record.profile_summary,
             "tool_hash": record.tool_hash,
+            "schema": record.schema,
         }
         path.write_text(yaml.safe_dump(payload, sort_keys=False))
         return path

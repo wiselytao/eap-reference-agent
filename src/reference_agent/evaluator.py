@@ -20,28 +20,39 @@ class Evaluator:
         evidence: List[Evidence],
         evidence_min: int,
         step_id: str,
+        step_index: int,
+        max_steps: int,
     ) -> EvaluationRecord:
         bindings_found = extract_bindings(answer)
-        bindings_missing = [
-            item for item in plan_skeleton.required_bindings if item not in bindings_found
-        ]
+        required_fields = plan_skeleton.required_fields
+        if self._llm and self._model and required_fields:
+            fields_found = set(self._semantic_field_mapping(required_fields, answer))
+        else:
+            fields_found = set(
+                item for item in required_fields if item.lower() in (answer or "").lower()
+            )
+        bindings_missing = [item for item in required_fields if item not in fields_found]
         locator_ok = all(self._locator_ok(item) for item in evidence)
         evidence_count = len(evidence)
         coverage_complete, covered_items, missing_items, notes = self._coverage(
             plan_skeleton, answer
         )
-        should_continue = (
-            not coverage_complete
-            or bool(bindings_missing)
-            or evidence_count < evidence_min
-            or not locator_ok
+        should_continue = self._should_continue(
+            plan_skeleton.stop_conditions,
+            coverage_complete,
+            bindings_missing,
+            evidence_count,
+            evidence_min,
+            locator_ok,
+            step_index,
+            max_steps,
         )
         return EvaluationRecord(
             step_id=step_id,
             coverage_complete=coverage_complete,
             covered_items=covered_items,
             missing_items=missing_items,
-            bindings_found=bindings_found,
+            bindings_found=sorted(fields_found),
             bindings_missing=bindings_missing,
             evidence_count=evidence_count,
             locator_ok=locator_ok,
@@ -69,6 +80,53 @@ class Evaluator:
         covered = [item for item in plan_skeleton.answer_blueprint if item.lower() in answer_lower]
         missing = [item for item in plan_skeleton.answer_blueprint if item.lower() not in answer_lower]
         return len(missing) == 0, covered, missing, "Heuristic coverage check"
+
+    def _semantic_field_mapping(self, required_fields: List[str], answer: str) -> List[str]:
+        prompt = (
+            "Given the required field types, determine which are supported by the answer. "
+            "Return JSON with key 'found_fields' as a list chosen only from the required_fields.\n\n"
+            f"required_fields: {required_fields}\n\n"
+            f"answer: {answer}\n"
+        )
+        try:
+            response = self._llm.generate(self._model, LLMRequest(prompt, 0.0, 128))
+            data = json.loads(response)
+            found = data.get("found_fields", [])
+            return [item for item in found if item in required_fields]
+        except Exception:
+            return []
+
+    @staticmethod
+    def _should_continue(
+        stop_conditions: List[str],
+        coverage_complete: bool,
+        bindings_missing: List[str],
+        evidence_count: int,
+        evidence_min: int,
+        locator_ok: bool,
+        step_index: int,
+        max_steps: int,
+    ) -> bool:
+        if step_index >= max_steps:
+            return False
+        normalized = " ".join(stop_conditions).lower()
+        if "coverage" in normalized and coverage_complete:
+            return False
+        if ("binding" in normalized or "identifier" in normalized) and not bindings_missing:
+            return False
+        if "evidence" in normalized and evidence_count >= evidence_min and locator_ok:
+            if coverage_complete and not bindings_missing:
+                return False
+        if "step_budget" in normalized or "step budget" in normalized:
+            if step_index >= max_steps:
+                return False
+        # default: continue if any core requirement is missing
+        return (
+            not coverage_complete
+            or bool(bindings_missing)
+            or evidence_count < evidence_min
+            or not locator_ok
+        )
 
     @staticmethod
     def _coverage_prompt(answer_blueprint: List[str], answer: str) -> str:
