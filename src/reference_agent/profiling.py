@@ -117,9 +117,11 @@ def question_set_for_tool(tool: ToolEntry) -> List[str]:
     prefix = (tool.pipeline_prefix or "").upper()
     if prefix == "GRAPH:":
         return [
-            "List key entities in this dataset.",
-            "What are the common relationship types?",
-            "Give an example of a typical graph query this dataset can answer.",
+            "List the node labels in this graph and describe each briefly.",
+            "List the relationship types and the allowed source/target labels for each.",
+            "For each node label, list key properties and provide 2-3 sample values.",
+            "For each relationship type, list key properties and provide 2-3 sample values.",
+            "Provide one example traversal query this graph supports (include the labels and properties used).",
         ]
     if prefix == "SQL:":
         return [
@@ -129,6 +131,8 @@ def question_set_for_tool(tool: ToolEntry) -> List[str]:
         ]
     return [
         "What topics does this dataset cover?",
-        "Provide example questions this dataset can answer.",
+        "Provide 3 example questions this dataset can answer.",
+        "List key entities or concepts (5-10) that appear frequently.",
         "What time range or scope is included?",
+        "What common filters or fields are available (e.g., product, version, region)?",
     ]
