@@ -81,7 +81,7 @@ class BoundedExecutor:
         evidence: List[Evidence] = []
         step_records = []
         evaluations: List[EvaluationRecord] = []
-        tool_answers: List[tuple[str, str]] = []
+        tool_answer_map: dict[str, List[str]] = {}
         current_query = query
         candidate_tool_ids = [
             tool_id for tool_id in (plan_skeleton.candidate_tools or profile.enabled_tools) if tool_id in tools
@@ -102,25 +102,31 @@ class BoundedExecutor:
                 break
 
             step_answers: List[str] = []
-            max_workers = min(8, len(step_tool_ids)) or 1
+            questions = self._build_multi_queries(
+                query,
+                current_query,
+                evaluations[-1] if evaluations else None,
+            )
+            max_workers = min(12, len(step_tool_ids) * len(questions)) or 1
             with ThreadPoolExecutor(max_workers=max_workers) as pool:
                 futures = {}
                 for tool_id in step_tool_ids:
                     tool = tools.get(tool_id)
                     if not tool:
                         continue
-                    futures[tool_id] = pool.submit(self._executor.call_tool, tool, current_query)
-                for tool_id in step_tool_ids:
-                    future = futures.get(tool_id)
-                    if not future:
-                        continue
+                    for q_index, question in enumerate(questions, start=1):
+                        futures[(tool_id, q_index)] = pool.submit(
+                            self._executor.call_tool, tool, question
+                        )
+                for (tool_id, q_index), future in futures.items():
                     answer, step_evidence, step_record = future.result()
                     step_record.input_summary["step_index"] = step_index
-                    step_record.step_id = f"{step_index}:{tool_id}"
+                    step_record.input_summary["query_index"] = q_index
+                    step_record.step_id = f"{step_index}:{tool_id}:{q_index}"
                     step_records.append(step_record)
                     evidence.extend(step_evidence)
-                    step_answers.append(f"[{tool_id}] {answer}".strip())
-                    tool_answers.append((tool_id, answer))
+                    step_answers.append(f"[{tool_id}#{q_index}] {answer}".strip())
+                    tool_answer_map.setdefault(tool_id, []).append(answer)
 
             used_tool_ids.update(step_tool_ids)
             step_answer = "\n".join(step_answers)
@@ -155,6 +161,11 @@ class BoundedExecutor:
                     evaluation.found_fields,
                 )
 
+        tool_answers = [
+            (tool_id, "\n".join(answers))
+            for tool_id, answers in tool_answer_map.items()
+            if answers
+        ]
         answer = self._executor.compose_multi(query, tool_answers, evidence)
         if not evidence:
             status = "EMPTY"
@@ -259,6 +270,35 @@ class BoundedExecutor:
             return rewritten or draft
         except Exception:
             return draft
+
+    def _build_multi_queries(
+        self,
+        original_query: str,
+        current_query: str,
+        evaluation: EvaluationRecord | None,
+    ) -> List[str]:
+        gaps = []
+        if evaluation:
+            gaps = [item.strip() for item in evaluation.missing_items + evaluation.missing_fields if item.strip()]
+        if not self._llm or not self._model:
+            return [current_query]
+        prompt = (
+            "Generate up to 3 short, distinct follow-up questions to retrieve missing information. "
+            "Each question must be standalone. Return a JSON array of strings only.\n\n"
+            f"Original question: {original_query}\n"
+            f"Current query context: {current_query}\n"
+            f"Missing items/fields: {', '.join(gaps)}\n"
+        )
+        try:
+            response = self._llm.generate(self._model, LLMRequest(prompt, 0.0, 256))
+            parsed = json.loads(response)
+            if isinstance(parsed, list):
+                questions = [str(item).strip() for item in parsed if str(item).strip()]
+                if questions:
+                    return questions[:3]
+        except Exception:
+            pass
+        return [current_query]
 
     def _select_gap_tools(
         self,

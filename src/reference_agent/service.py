@@ -200,7 +200,9 @@ class ReferenceAgentService:
                 step_index = fallback_index
                 fallback_index += 1
             tool_id = step.tool_id or step.step_id.split(":")[0]
-            grouped_map.setdefault(int(step_index), []).append(tool_id)
+            bucket = grouped_map.setdefault(int(step_index), [])
+            if tool_id not in bucket:
+                bucket.append(tool_id)
         return [grouped_map[key] for key in sorted(grouped_map)]
 
     def _ensure_profiling(self, profile: Profile, force: bool = False, tool_ids: list[str] | None = None) -> None:
