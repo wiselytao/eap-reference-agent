@@ -2,12 +2,20 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.31
+
+### Added
+- Rationale code reference in `doc/RATIONALE_CODES.md`.
+
+## v1.30
+
+### Added
+- Trace now records per-step plans (tools, questions, rationale codes).
+
 ## v1.29
 
 ### Added
-- Dynamic executor flow: Step 1 queries all candidate tools in parallel; follow-up steps target gap-filling tools.
-- Multi-tool answer synthesis via AnswerComposer for final responses.
- - Multi-question per step: each tool can receive up to 3 parallel questions in a single step.
+- Multi-question per step: each tool can receive up to 3 parallel questions in a single step.
 
 ### Changed
 - Follow-up tool selection can use LLM-based gap/tool matching with profile summaries as context.

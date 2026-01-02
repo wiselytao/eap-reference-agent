@@ -7,7 +7,16 @@ from typing import Dict, List
 from reference_agent.executor import ExecutionResult, StrategyExecutor
 from reference_agent.adapters.llm import LLMClient, LLMRequest
 from reference_agent.evaluator import Evaluator
-from reference_agent.models import Evidence, EvaluationRecord, PlanExecution, PlanSkeleton, PlanStep, Profile, ToolEntry
+from reference_agent.models import (
+    Evidence,
+    EvaluationRecord,
+    PlanExecution,
+    PlanSkeleton,
+    PlanStep,
+    Profile,
+    StepPlan,
+    ToolEntry,
+)
 
 
 class BoundedExecutor:
@@ -81,6 +90,7 @@ class BoundedExecutor:
         evidence: List[Evidence] = []
         step_records = []
         evaluations: List[EvaluationRecord] = []
+        step_plans: List[StepPlan] = []
         tool_answer_map: dict[str, List[str]] = {}
         current_query = query
         candidate_tool_ids = [
@@ -91,8 +101,9 @@ class BoundedExecutor:
         for step_index in range(1, profile.limits.max_steps + 1):
             if step_index == 1:
                 step_tool_ids = candidate_tool_ids
+                selection_rationale = ["R_STEP1_ALL_CANDIDATES"]
             else:
-                step_tool_ids = self._select_gap_tools(
+                step_tool_ids, selection_rationale = self._select_gap_tools(
                     tools,
                     evaluations[-1],
                     candidate_tool_ids,
@@ -102,7 +113,7 @@ class BoundedExecutor:
                 break
 
             step_answers: List[str] = []
-            questions = self._build_multi_queries(
+            questions, query_rationale = self._build_multi_queries(
                 query,
                 current_query,
                 evaluations[-1] if evaluations else None,
@@ -128,6 +139,15 @@ class BoundedExecutor:
                     step_answers.append(f"[{tool_id}#{q_index}] {answer}".strip())
                     tool_answer_map.setdefault(tool_id, []).append(answer)
 
+            step_plans.append(
+                StepPlan(
+                    step_index=step_index,
+                    template="DYNAMIC",
+                    tool_ids=step_tool_ids,
+                    questions=questions,
+                    rationale_codes=selection_rationale + query_rationale,
+                )
+            )
             used_tool_ids.update(step_tool_ids)
             step_answer = "\n".join(step_answers)
             evaluation = self._evaluator.evaluate(
@@ -173,7 +193,14 @@ class BoundedExecutor:
             status = "SUCCESS"
         else:
             status = "PARTIAL"
-        return ExecutionResult(answer, evidence, step_records, status, evaluations=evaluations)
+        return ExecutionResult(
+            answer,
+            evidence,
+            step_records,
+            status,
+            evaluations=evaluations,
+            step_plans=step_plans,
+        )
 
     def _execute_sequential(
         self,
@@ -276,12 +303,12 @@ class BoundedExecutor:
         original_query: str,
         current_query: str,
         evaluation: EvaluationRecord | None,
-    ) -> List[str]:
+    ) -> tuple[List[str], List[str]]:
         gaps = []
         if evaluation:
             gaps = [item.strip() for item in evaluation.missing_items + evaluation.missing_fields if item.strip()]
         if not self._llm or not self._model:
-            return [current_query]
+            return [current_query], ["R_MULTI_QUERY_FALLBACK"]
         prompt = (
             "Generate up to 3 short, distinct follow-up questions to retrieve missing information. "
             "Each question must be standalone. Return a JSON array of strings only.\n\n"
@@ -295,10 +322,10 @@ class BoundedExecutor:
             if isinstance(parsed, list):
                 questions = [str(item).strip() for item in parsed if str(item).strip()]
                 if questions:
-                    return questions[:3]
+                    return questions[:3], ["R_MULTI_QUERY_LLM"]
         except Exception:
             pass
-        return [current_query]
+        return [current_query], ["R_MULTI_QUERY_FALLBACK"]
 
     def _select_gap_tools(
         self,
@@ -306,10 +333,10 @@ class BoundedExecutor:
         evaluation: EvaluationRecord,
         candidate_tool_ids: List[str],
         used_tool_ids: set[str],
-    ) -> List[str]:
+    ) -> tuple[List[str], List[str]]:
         gaps = [item.strip() for item in evaluation.missing_items + evaluation.missing_fields if item.strip()]
         if not gaps:
-            return []
+            return [], ["R_GAP_NONE"]
         if self._llm and self._model:
             tool_lines = []
             for tool_id in candidate_tool_ids:
@@ -330,7 +357,7 @@ class BoundedExecutor:
                 if isinstance(parsed, list):
                     filtered = [tool_id for tool_id in parsed if tool_id in candidate_tool_ids]
                     if filtered:
-                        return filtered
+                        return filtered, ["R_GAP_LLM_SELECTION"]
             except Exception:
                 pass
 
@@ -344,10 +371,14 @@ class BoundedExecutor:
             if any(gap in summary for gap in lowered_gaps):
                 matching.append(tool_id)
         if matching:
-            return matching
+            return matching, ["R_GAP_SUMMARY_MATCH"]
         if used_tool_ids:
-            return [tool_id for tool_id in candidate_tool_ids if tool_id not in used_tool_ids] or candidate_tool_ids
-        return candidate_tool_ids
+            return (
+                [tool_id for tool_id in candidate_tool_ids if tool_id not in used_tool_ids]
+                or candidate_tool_ids,
+                ["R_GAP_UNUSED_FALLBACK"],
+            )
+        return candidate_tool_ids, ["R_GAP_ALL_CANDIDATES"]
 
     @staticmethod
     def _truncate(text: str, max_len: int) -> str:

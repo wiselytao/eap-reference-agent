@@ -141,6 +141,15 @@ class EvaluationRecord(BaseModel):
     notes: Optional[str] = None
 
 
+class StepPlan(BaseModel):
+    step_index: int
+    template: str
+    tool_ids: List[str] = Field(default_factory=list)
+    questions: List[str] = Field(default_factory=list)
+    rationale_codes: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
 class Trace(BaseModel):
     trace_id: str
     profile_id: str
@@ -154,6 +163,7 @@ class Trace(BaseModel):
     plan_execution: Optional["PlanExecution"] = None
     evaluations: List[EvaluationRecord] = Field(default_factory=list)
     queried_tools_by_step: List[List[str]] = Field(default_factory=list)
+    step_plans: List[StepPlan] = Field(default_factory=list)
 
 
 class PlanSkeleton(BaseModel):

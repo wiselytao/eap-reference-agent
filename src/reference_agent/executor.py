@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple
 from reference_agent.adapters.external_mcp import ExternalMcpClient, ExternalMcpConfig
 from reference_agent.adapters.hybridrag import HybridRagClient, HybridRagConfig, build_hybrid_evidence
 from reference_agent.composer import AnswerComposer
-from reference_agent.models import Evidence, EvaluationRecord, Profile, StepRecord, ToolEntry, ToolHealth
+from reference_agent.models import Evidence, EvaluationRecord, Profile, StepPlan, StepRecord, ToolEntry, ToolHealth
 from reference_agent.secrets import resolve_secret
 from reference_agent import strategies
 
@@ -19,6 +19,7 @@ class ExecutionResult:
     steps: List[StepRecord]
     status: str
     evaluations: List[EvaluationRecord] = field(default_factory=list)
+    step_plans: List["StepPlan"] = field(default_factory=list)
 
 
 class StrategyExecutor:
