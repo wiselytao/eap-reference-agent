@@ -192,16 +192,16 @@ class ReferenceAgentService:
 
     @staticmethod
     def _group_tools_by_step(steps: list[StepRecord]) -> list[list[str]]:
-        grouped: list[list[str]] = []
+        grouped_map: dict[int, list[str]] = {}
+        fallback_index = 1
         for step in steps:
-            if not step.step_id:
-                continue
-            parts = step.step_id.split(":")
-            if not parts:
-                continue
-            tool_id = step.tool_id or parts[0]
-            grouped.append([tool_id])
-        return grouped
+            step_index = step.input_summary.get("step_index")
+            if step_index is None:
+                step_index = fallback_index
+                fallback_index += 1
+            tool_id = step.tool_id or step.step_id.split(":")[0]
+            grouped_map.setdefault(int(step_index), []).append(tool_id)
+        return [grouped_map[key] for key in sorted(grouped_map)]
 
     def _ensure_profiling(self, profile: Profile, force: bool = False, tool_ids: list[str] | None = None) -> None:
         changed_tool_ids = self._detect_changed_tools()

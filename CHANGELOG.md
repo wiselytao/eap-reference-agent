@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.28
+
+### Added
+- Dynamic executor flow: Step 1 queries all candidate tools in parallel; follow-up steps target gap-filling tools.
+- Multi-tool answer synthesis via AnswerComposer for final responses.
+
+### Changed
+- Follow-up tool selection can use LLM-based gap/tool matching with profile summaries as context.
+- Trace tool grouping uses step index to reflect parallel queries per step.
+
 ## v1.27
 
 ### Changed

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Tuple
+import json
+from typing import Dict, List
 
-from reference_agent.bindings import extract_bindings
 from reference_agent.executor import ExecutionResult, StrategyExecutor
 from reference_agent.adapters.llm import LLMClient, LLMRequest
 from reference_agent.evaluator import Evaluator
-from reference_agent.models import Evidence, PlanExecution, PlanSkeleton, PlanStep, Profile, ToolEntry
+from reference_agent.models import Evidence, EvaluationRecord, PlanExecution, PlanSkeleton, PlanStep, Profile, ToolEntry
 
 
 class BoundedExecutor:
@@ -33,6 +33,8 @@ class BoundedExecutor:
     ) -> ExecutionResult:
         if plan.template == "T3":
             return self._execute_t3(plan, plan_skeleton, query, profile, tools)
+        if plan.template == "DYNAMIC":
+            return self._execute_dynamic(plan_skeleton, query, profile, tools)
         return self._execute_sequential(plan.steps, plan_skeleton, query, profile, tools)
 
     def _execute_t3(
@@ -69,6 +71,99 @@ class BoundedExecutor:
         )
         return ExecutionResult(answer, evidence, steps, status, evaluations=[evaluation])
 
+    def _execute_dynamic(
+        self,
+        plan_skeleton: PlanSkeleton,
+        query: str,
+        profile: Profile,
+        tools: Dict[str, ToolEntry],
+    ) -> ExecutionResult:
+        evidence: List[Evidence] = []
+        step_records = []
+        evaluations: List[EvaluationRecord] = []
+        tool_answers: List[tuple[str, str]] = []
+        current_query = query
+        candidate_tool_ids = [
+            tool_id for tool_id in (plan_skeleton.candidate_tools or profile.enabled_tools) if tool_id in tools
+        ]
+        used_tool_ids: set[str] = set()
+
+        for step_index in range(1, profile.limits.max_steps + 1):
+            if step_index == 1:
+                step_tool_ids = candidate_tool_ids
+            else:
+                step_tool_ids = self._select_gap_tools(
+                    tools,
+                    evaluations[-1],
+                    candidate_tool_ids,
+                    used_tool_ids,
+                )
+            if not step_tool_ids:
+                break
+
+            step_answers: List[str] = []
+            max_workers = min(8, len(step_tool_ids)) or 1
+            with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                futures = {}
+                for tool_id in step_tool_ids:
+                    tool = tools.get(tool_id)
+                    if not tool:
+                        continue
+                    futures[tool_id] = pool.submit(self._executor.call_tool, tool, current_query)
+                for tool_id in step_tool_ids:
+                    future = futures.get(tool_id)
+                    if not future:
+                        continue
+                    answer, step_evidence, step_record = future.result()
+                    step_record.input_summary["step_index"] = step_index
+                    step_record.step_id = f"{step_index}:{tool_id}"
+                    step_records.append(step_record)
+                    evidence.extend(step_evidence)
+                    step_answers.append(f"[{tool_id}] {answer}".strip())
+                    tool_answers.append((tool_id, answer))
+
+            used_tool_ids.update(step_tool_ids)
+            step_answer = "\n".join(step_answers)
+            evaluation = self._evaluator.evaluate(
+                plan_skeleton,
+                step_answer,
+                evidence,
+                profile.limits.evidence_min,
+                step_id=f"STEP_{step_index}",
+                step_index=step_index,
+                max_steps=profile.limits.max_steps,
+            )
+            evaluations.append(evaluation)
+            if step_index > 1:
+                prev = evaluations[-2]
+                coverage_progress = len(evaluation.missing_items) < len(prev.missing_items)
+                field_progress = len(evaluation.missing_fields) < len(prev.missing_fields)
+                if not coverage_progress and not field_progress:
+                    if (
+                        evaluation.evidence_count >= profile.limits.evidence_min
+                        and evaluation.locator_ok
+                    ):
+                        evaluation.should_continue = False
+            if not evaluation.should_continue:
+                break
+            if step_index < profile.limits.max_steps:
+                current_query = self._build_followup_query(
+                    query,
+                    step_answer,
+                    evaluation.missing_items,
+                    evaluation.missing_fields,
+                    evaluation.found_fields,
+                )
+
+        answer = self._executor.compose_multi(query, tool_answers, evidence)
+        if not evidence:
+            status = "EMPTY"
+        elif len(evidence) >= profile.limits.evidence_min:
+            status = "SUCCESS"
+        else:
+            status = "PARTIAL"
+        return ExecutionResult(answer, evidence, step_records, status, evaluations=evaluations)
+
     def _execute_sequential(
         self,
         steps: List[PlanStep],
@@ -93,14 +188,14 @@ class BoundedExecutor:
             last_tool = tool
 
             evaluation = self._evaluator.evaluate(
-                    plan_skeleton,
-                    answer,
-                    evidence,
-                    profile.limits.evidence_min,
-                    step_id=step.step_id,
-                    step_index=idx,
-                    max_steps=profile.limits.max_steps,
-                )
+                plan_skeleton,
+                answer,
+                evidence,
+                profile.limits.evidence_min,
+                step_id=step.step_id,
+                step_index=idx,
+                max_steps=profile.limits.max_steps,
+            )
             evaluations.append(evaluation)
             if evaluation.coverage_complete and evaluation.evidence_count >= profile.limits.evidence_min:
                 best_answer = answer
@@ -124,12 +219,6 @@ class BoundedExecutor:
                 )
             if not evaluation.should_continue:
                 break
-
-            bindings = extract_bindings(answer)
-            if bindings:
-                step.bindings_used = bindings
-            if idx < len(steps) and bindings:
-                current_query = f"{query}\nIdentifiers: {', '.join(bindings)}"
 
         if not last_tool:
             return ExecutionResult("", evidence, step_records, "EMPTY")
@@ -170,6 +259,55 @@ class BoundedExecutor:
             return rewritten or draft
         except Exception:
             return draft
+
+    def _select_gap_tools(
+        self,
+        tools: Dict[str, ToolEntry],
+        evaluation: EvaluationRecord,
+        candidate_tool_ids: List[str],
+        used_tool_ids: set[str],
+    ) -> List[str]:
+        gaps = [item.strip() for item in evaluation.missing_items + evaluation.missing_fields if item.strip()]
+        if not gaps:
+            return []
+        if self._llm and self._model:
+            tool_lines = []
+            for tool_id in candidate_tool_ids:
+                tool = tools.get(tool_id)
+                if not tool:
+                    continue
+                summary = tool.profile_summary or tool.summary or ""
+                tool_lines.append(f"- {tool_id} ({tool.pipeline_prefix or 'UNKNOWN'}): {summary}")
+            prompt = (
+                "Select the tools most likely to fill the missing fields/items. "
+                "Return a JSON array of tool_id strings. If none, return [] only.\n\n"
+                f"Missing items/fields: {', '.join(gaps)}\n\n"
+                f"Candidate tools:\n{chr(10).join(tool_lines)}\n"
+            )
+            try:
+                response = self._llm.generate(self._model, LLMRequest(prompt, 0.0, 256))
+                parsed = json.loads(response)
+                if isinstance(parsed, list):
+                    filtered = [tool_id for tool_id in parsed if tool_id in candidate_tool_ids]
+                    if filtered:
+                        return filtered
+            except Exception:
+                pass
+
+        lowered_gaps = [gap.lower() for gap in gaps]
+        matching = []
+        for tool_id in candidate_tool_ids:
+            tool = tools.get(tool_id)
+            if not tool:
+                continue
+            summary = (tool.profile_summary or tool.summary or "").lower()
+            if any(gap in summary for gap in lowered_gaps):
+                matching.append(tool_id)
+        if matching:
+            return matching
+        if used_tool_ids:
+            return [tool_id for tool_id in candidate_tool_ids if tool_id not in used_tool_ids] or candidate_tool_ids
+        return candidate_tool_ids
 
     @staticmethod
     def _truncate(text: str, max_len: int) -> str:

@@ -58,6 +58,9 @@ class StrategyExecutor:
     ) -> str:
         return self._composer.compose_external(query, local_answer, external_answer, evidence)
 
+    def compose_multi(self, query: str, tool_answers: List[tuple[str, str]], evidence: List[Evidence]) -> str:
+        return self._composer.compose_multi(query, tool_answers, evidence)
+
     def evaluate_status(
         self, profile: Profile, tool: ToolEntry, evidence: List[Evidence], required: bool
     ) -> str:
