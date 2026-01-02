@@ -100,8 +100,11 @@ class BoundedExecutor:
 
         for step_index in range(1, profile.limits.max_steps + 1):
             if step_index == 1:
-                step_tool_ids = candidate_tool_ids
-                selection_rationale = ["R_STEP1_ALL_CANDIDATES"]
+                step_tool_ids, selection_rationale, selection_notes = self._filter_relevant_tools(
+                    query,
+                    tools,
+                    candidate_tool_ids,
+                )
             else:
                 step_tool_ids, selection_rationale = self._select_gap_tools(
                     tools,
@@ -109,7 +112,27 @@ class BoundedExecutor:
                     candidate_tool_ids,
                     used_tool_ids,
                 )
+                selection_notes = None
             if not step_tool_ids:
+                if step_index == 1:
+                    step_plans.append(
+                        StepPlan(
+                            step_index=step_index,
+                            template="DYNAMIC",
+                            tool_ids=[],
+                            questions=[],
+                            rationale_codes=selection_rationale,
+                            notes=selection_notes,
+                        )
+                    )
+                    return ExecutionResult(
+                        "",
+                        [],
+                        [],
+                        "EMPTY",
+                        evaluations=[],
+                        step_plans=step_plans,
+                    )
                 break
 
             step_answers: List[str] = []
@@ -146,6 +169,7 @@ class BoundedExecutor:
                     tool_ids=step_tool_ids,
                     questions=questions,
                     rationale_codes=selection_rationale + query_rationale,
+                    notes=selection_notes,
                 )
             )
             used_tool_ids.update(step_tool_ids)
@@ -326,6 +350,58 @@ class BoundedExecutor:
         except Exception:
             pass
         return [current_query], ["R_MULTI_QUERY_FALLBACK"]
+
+    def _filter_relevant_tools(
+        self,
+        query: str,
+        tools: Dict[str, ToolEntry],
+        candidate_tool_ids: List[str],
+    ) -> tuple[List[str], List[str], str | None]:
+        if not self._llm or not self._model:
+            return candidate_tool_ids, ["R_STEP1_RELEVANCE_FALLBACK"], None
+
+        def assess(tool_id: str) -> tuple[str, str, str]:
+            tool = tools.get(tool_id)
+            summary = ""
+            if tool:
+                summary = tool.profile_summary or tool.summary or ""
+            if not summary:
+                return tool_id, "uncertain", "no_summary"
+            prompt = (
+                "Decide whether the tool's profiling summary is relevant to answering the user question. "
+                "Be recall-friendly: only mark not_relevant if it is clearly unrelated. "
+                "Return JSON with keys: relevance (relevant/uncertain/not_relevant), reason (string).\n\n"
+                f"Question: {query}\n\n"
+                f"Tool summary: {summary}\n"
+            )
+            try:
+                response = self._llm.generate(self._model, LLMRequest(prompt, 0.0, 128))
+                parsed = json.loads(response)
+                relevance = str(parsed.get("relevance") or "").strip().lower()
+                reason = str(parsed.get("reason") or "").strip()
+                if relevance not in {"relevant", "uncertain", "not_relevant"}:
+                    relevance = "uncertain"
+                return tool_id, relevance, reason
+            except Exception:
+                return tool_id, "uncertain", "llm_error"
+
+        results = []
+        with ThreadPoolExecutor(max_workers=min(8, len(candidate_tool_ids)) or 1) as pool:
+            futures = {tool_id: pool.submit(assess, tool_id) for tool_id in candidate_tool_ids}
+            for tool_id in candidate_tool_ids:
+                results.append(futures[tool_id].result())
+
+        relevant_tools = [
+            tool_id for tool_id, relevance, _ in results if relevance in {"relevant", "uncertain"}
+        ]
+        notes = "; ".join(
+            f"{tool_id}: {relevance}"
+            + (f" ({reason})" if reason else "")
+            for tool_id, relevance, reason in results
+        )
+        if not relevant_tools:
+            return [], ["R_STEP1_RELEVANCE_EMPTY_STOP"], notes
+        return relevant_tools, ["R_STEP1_LLM_RELEVANCE_SOFT"], notes
 
     def _select_gap_tools(
         self,

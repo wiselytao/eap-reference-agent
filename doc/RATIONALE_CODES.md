@@ -3,7 +3,9 @@
 This file documents rationale codes emitted in `trace.step_plans[].rationale_codes` to make each step's plan auditable.
 
 ## Step Selection
-- `R_STEP1_ALL_CANDIDATES`: Step 1 queries all candidate tools from the plan skeleton/profile.
+- `R_STEP1_LLM_RELEVANCE_SOFT`: Step 1 uses LLM to decide relevance with a recall-friendly rule (include uncertain tools).
+- `R_STEP1_RELEVANCE_FALLBACK`: LLM unavailable; Step 1 uses all candidate tools.
+- `R_STEP1_RELEVANCE_EMPTY_STOP`: LLM marked no tools as relevant; Step 1 stops and returns a no-evidence response.
 - `R_GAP_LLM_SELECTION`: Tools selected by LLM based on missing items/fields and tool summaries.
 - `R_GAP_SUMMARY_MATCH`: Tools selected by heuristic matching missing items/fields against tool summaries.
 - `R_GAP_UNUSED_FALLBACK`: No clear match; select tools not used yet (or all candidates if none remain).

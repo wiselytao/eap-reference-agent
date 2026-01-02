@@ -2,6 +2,21 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.34
+
+### Changed
+- Step 1 relevance filter is now recall-friendly with an `uncertain` bucket.
+
+## v1.33
+
+### Changed
+- Step 1 relevance filter now stops early and returns no-evidence when no tools are relevant.
+
+## v1.32
+
+### Added
+- Step 1 relevance filter using LLM on profiling summaries (with traceable rationale codes).
+
 ## v1.31
 
 ### Added
