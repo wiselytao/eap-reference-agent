@@ -1,6 +1,6 @@
 llm:
   provider: azure_openai
-  base_url: "https://e800-ai-coding.openai.azure.com"
+  base_url: "https://example.openai.azure.com"
   model: "gpt-4.1"
   api_key_ref: "AOAI_KEY"
   temperature: 0.2
@@ -42,8 +42,8 @@ observability:
 
 tls:
   enabled: false
-  certfile: ""
-  keyfile: ""
+  certfile: "/path/to/cert.pem"
+  keyfile: "/path/to/key.pem"
 
 profiling_dir: "tools/profiling"
 profiling_timeout_seconds: 300

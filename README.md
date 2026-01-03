@@ -13,8 +13,15 @@ source .venv/bin/activate
 pip install -e .
 export OPENAI_API_KEY=your_key
 export HYBRIDRAG_API_TOKEN=your_token
-uvicorn reference_agent.main:app --host 0.0.0.0 --port 8080
+python -m reference_agent.main
 ```
+
+## Install & Configure
+1) Create a virtual environment and install the package.
+2) Copy `doc/config.example.yaml` to `config.yaml` and adjust values.
+3) Copy `doc/env.example` to `.env.local` (or export variables manually).
+4) Set required environment variables (e.g., `AOAI_KEY`, `TOOL_<id>_KEY`).
+5) Start the service with `python -m reference_agent.main`.
 
 Configuration files:
 - `config.yaml`
@@ -47,6 +54,13 @@ docker run -p 8080:8080 \
 
 ## Systemd Service
 See `deploy/reference-agent.service` for a sample unit file. Update paths and environment variables before use.
+
+## HTTPS (TLS)
+Set `tls.enabled: true` and provide `tls.certfile` + `tls.keyfile` in `config.yaml`, then run:
+```bash
+python -m reference_agent.main
+```
+The API and MCP adapter will be served over HTTPS.
 
 ## Tests
 ```bash

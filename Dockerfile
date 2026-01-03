@@ -15,4 +15,4 @@ ENV REFERENCE_AGENT_CONFIG=/app/config.yaml
 ENV REFERENCE_AGENT_TOOLS=/app/tools/TOOLS.md
 ENV REFERENCE_AGENT_PROFILES=/app/profiles
 
-CMD ["uvicorn", "reference_agent.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "-m", "reference_agent.main"]

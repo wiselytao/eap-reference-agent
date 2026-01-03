@@ -52,12 +52,19 @@ class ObservabilityConfig(BaseModel):
     log_level: str = "INFO"
 
 
+class TlsConfig(BaseModel):
+    enabled: bool = False
+    certfile: Optional[str] = None
+    keyfile: Optional[str] = None
+
+
 class AppConfig(BaseModel):
     llm: LLMConfig
     runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
     audit: AuditConfig = Field(default_factory=AuditConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
+    tls: TlsConfig = Field(default_factory=TlsConfig)
     profiling_dir: str = "tools/profiling"
     profiling_timeout_seconds: int = 300
     profiling_max_retries: int = 2

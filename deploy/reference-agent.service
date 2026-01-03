@@ -10,7 +10,7 @@ Environment=REFERENCE_AGENT_TOOLS=/opt/reference-agent/tools/TOOLS.md
 Environment=REFERENCE_AGENT_PROFILES=/opt/reference-agent/profiles
 Environment=OPENAI_API_KEY=CHANGE_ME
 Environment=HYBRIDRAG_API_TOKEN=CHANGE_ME
-ExecStart=/opt/reference-agent/.venv/bin/uvicorn reference_agent.main:app --host 0.0.0.0 --port 8080
+ExecStart=/opt/reference-agent/.venv/bin/python -m reference_agent.main
 Restart=always
 RestartSec=5
 

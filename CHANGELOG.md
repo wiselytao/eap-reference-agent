@@ -2,6 +2,21 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.39
+
+### Added
+- Environment variable example under `doc/env.example`.
+
+## v1.38
+
+### Added
+- Config example file under `doc/` and README install/config steps.
+
+## v1.37
+
+### Added
+- TLS configuration support for HTTPS serving via `config.yaml`.
+
 ## v1.36
 
 ### Changed
