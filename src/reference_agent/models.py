@@ -139,6 +139,7 @@ class EvaluationRecord(BaseModel):
     locator_ok: bool = False
     should_continue: bool = False
     notes: Optional[str] = None
+    stop_reasons: List[str] = Field(default_factory=list)
 
 
 class StepPlan(BaseModel):
@@ -193,6 +194,7 @@ class Trace(BaseModel):
     queried_tools_by_step: List[List[str]] = Field(default_factory=list)
     step_plans: List[StepPlan] = Field(default_factory=list)
     synthesis: Optional[SynthesisResult] = None
+    final_status_reasons: List[str] = Field(default_factory=list)
 
 
 class PlanSkeleton(BaseModel):

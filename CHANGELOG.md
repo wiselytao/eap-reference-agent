@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.48
+
+### Added
+- Trace now records evaluation stop reasons and final status downgrade reasons.
+
 ## v1.47
 
 ### Added

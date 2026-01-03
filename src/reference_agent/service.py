@@ -98,18 +98,23 @@ class ReferenceAgentService:
 
         final_status = result.status
         answer = result.answer
+        final_status_reasons: list[str] = []
         if result.evaluations:
             needs_more = any(record.should_continue for record in result.evaluations)
             if needs_more:
                 final_status = "PARTIAL" if evidence else "EMPTY"
+                final_status_reasons.append("DOWNGRADE_NEEDS_MORE_STEPS")
         if not self._evidence_contract_ok(profile, evidence, result.steps):
             if final_status == "SUCCESS":
                 final_status = "EMPTY"
+                final_status_reasons.append("DOWNGRADE_EVIDENCE_CONTRACT")
         if profile.answer_policy.must_cite and not evidence:
             final_status = "EMPTY"
             answer = get_template(profile.answer_policy.no_evidence_template, request.query)
+            final_status_reasons.append("DOWNGRADE_NO_EVIDENCE")
         elif final_status == "EMPTY":
             answer = get_template(profile.answer_policy.no_evidence_template, request.query)
+            final_status_reasons.append("DOWNGRADE_EMPTY")
         elif final_status == "PARTIAL":
             template = get_template("TPL_PARTIAL_V1", request.query)
             answer = self.composer.compose_partial(request.query, answer, evidence, template)
@@ -130,6 +135,7 @@ class ReferenceAgentService:
             queried_tools_by_step=self._group_tools_by_step(result.steps),
             step_plans=result.step_plans,
             synthesis=result.synthesis,
+            final_status_reasons=final_status_reasons,
             user_visible_notes=[],
         )
         self.trace_store.save(trace)

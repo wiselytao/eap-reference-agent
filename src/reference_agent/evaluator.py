@@ -37,7 +37,7 @@ class Evaluator:
         coverage_complete, covered_items, missing_items, notes = self._coverage(
             plan_skeleton, answer
         )
-        should_continue = self._should_continue(
+        should_continue, stop_reasons = self._should_continue(
             plan_skeleton.stop_conditions,
             coverage_complete,
             missing_fields,
@@ -58,6 +58,7 @@ class Evaluator:
             locator_ok=locator_ok,
             should_continue=should_continue,
             notes=notes,
+            stop_reasons=stop_reasons,
         )
 
     def _coverage(
@@ -106,27 +107,36 @@ class Evaluator:
         locator_ok: bool,
         step_index: int,
         max_steps: int,
-    ) -> bool:
+    ) -> tuple[bool, List[str]]:
+        reasons: List[str] = []
         if step_index >= max_steps:
-            return False
+            reasons.append("STOP_MAX_STEPS")
+            return False, reasons
         normalized = " ".join(stop_conditions).lower()
         if "coverage" in normalized and coverage_complete:
-            return False
+            reasons.append("STOP_COVERAGE_COMPLETE")
+            return False, reasons
         if ("binding" in normalized or "identifier" in normalized) and not bindings_missing:
-            return False
+            reasons.append("STOP_BINDINGS_MET")
+            return False, reasons
         if "evidence" in normalized and evidence_count >= evidence_min and locator_ok:
             if coverage_complete and not bindings_missing:
-                return False
+                reasons.append("STOP_EVIDENCE_MIN_MET")
+                return False, reasons
         if "step_budget" in normalized or "step budget" in normalized:
             if step_index >= max_steps:
-                return False
+                reasons.append("STOP_STEP_BUDGET")
+                return False, reasons
         # default: continue if any core requirement is missing
-        return (
+        should_continue = (
             not coverage_complete
             or bool(bindings_missing)
             or evidence_count < evidence_min
             or not locator_ok
         )
+        if not should_continue:
+            reasons.append("STOP_NO_PROGRESS")
+        return should_continue, reasons
 
     @staticmethod
     def _coverage_prompt(answer_blueprint: List[str], answer: str) -> str:
