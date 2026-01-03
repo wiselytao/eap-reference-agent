@@ -2,10 +2,15 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
-## v1.48
+## v2.0
 
 ### Added
-- Trace now records evaluation stop reasons and final status downgrade reasons.
+- Bounded planner with dynamic step execution and per-step plans in trace.
+- Profiling system with tool summaries, runtime probing, and profiling artifacts in `tools/profiling/`.
+- Cross-RAG synthesis pipeline (LLM normalization, alignment, conflict detection, mapping) with trace output.
+- OpenAI-compatible `/v1/chat/completions` with optional SSE streaming.
+- Optional TLS configuration and bearer token auth with active/next rotation.
+ - Trace now records evaluation stop reasons and final status downgrade reasons.
 
 ## v1.47
 
