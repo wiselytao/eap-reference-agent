@@ -2,6 +2,26 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.43
+
+### Added
+- API guide now links to OAS 3.1 spec.
+
+## v1.42
+
+### Added
+- OAS 3.1 specification for Core API and MCP adapter in `doc/openapi.json`.
+
+## v1.41
+
+### Added
+- README link to API/MCP usage guide.
+
+## v1.40
+
+### Added
+- API & MCP adapter usage guide in `doc/API_MCP.md`.
+
 ## v1.39
 
 ### Added

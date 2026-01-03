@@ -23,6 +23,9 @@ python -m reference_agent.main
 4) Set required environment variables (e.g., `AOAI_KEY`, `TOOL_<id>_KEY`).
 5) Start the service with `python -m reference_agent.main`.
 
+## API & MCP Adapter
+See `doc/API_MCP.md` for endpoint usage and examples.
+
 Configuration files:
 - `config.yaml`
 - `tools/TOOLS.md`

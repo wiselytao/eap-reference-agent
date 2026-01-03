@@ -1,0 +1,348 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Reference Agent API",
+    "version": "1.41.0",
+    "description": "Core HTTP API and MCP adapter for Reference Agent."
+  },
+  "servers": [
+    { "url": "http://localhost:8080" },
+    { "url": "https://localhost:8080" }
+  ],
+  "paths": {
+    "/ask": {
+      "post": {
+        "summary": "Ask a question",
+        "operationId": "ask",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AskRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Answer response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AskResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trace/{trace_id}": {
+      "get": {
+        "summary": "Fetch a trace by ID",
+        "operationId": "trace.get",
+        "parameters": [
+          {
+            "name": "trace_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trace object",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Trace" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/validate": {
+      "post": {
+        "summary": "Validate trace or locator",
+        "operationId": "validate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ValidateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidateResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/capabilities": {
+      "get": {
+        "summary": "Get profile capabilities",
+        "operationId": "capabilities",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Capabilities response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CapabilitiesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiling/run": {
+      "post": {
+        "summary": "Trigger profiling",
+        "operationId": "profiling.run",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProfilingRunRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profiling result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "status": { "type": "string" } },
+                  "required": ["status"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp/reference.ask": {
+      "post": {
+        "summary": "MCP ask (mirror)",
+        "operationId": "mcp.ask",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AskRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Answer response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AskResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp/reference.trace": {
+      "post": {
+        "summary": "MCP trace (mirror)",
+        "operationId": "mcp.trace",
+        "parameters": [
+          {
+            "name": "trace_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trace object",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Trace" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp/reference.validate": {
+      "post": {
+        "summary": "MCP validate (mirror)",
+        "operationId": "mcp.validate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ValidateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidateResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp/reference.capabilities": {
+      "post": {
+        "summary": "MCP capabilities (mirror)",
+        "operationId": "mcp.capabilities",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Capabilities response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CapabilitiesResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AskRequest": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" },
+          "profile_id": { "type": "string" },
+          "context": { "type": "object", "additionalProperties": true },
+          "strategy_id": { "type": "string" }
+        },
+        "required": ["query", "profile_id"]
+      },
+      "AskResponse": {
+        "type": "object",
+        "properties": {
+          "answer": { "type": "string" },
+          "evidence": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Evidence" }
+          },
+          "trace_id": { "type": "string" },
+          "status": { "type": "string" }
+        },
+        "required": ["answer", "evidence", "trace_id", "status"]
+      },
+      "ValidateRequest": {
+        "type": "object",
+        "properties": {
+          "trace_id": { "type": "string" },
+          "evidence_ref": { "$ref": "#/components/schemas/EvidenceLocator" }
+        }
+      },
+      "ValidateResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "evidence": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Evidence" }
+          },
+          "locator": { "$ref": "#/components/schemas/EvidenceLocator" }
+        }
+      },
+      "CapabilitiesResponse": {
+        "type": "object",
+        "properties": {
+          "profile_id": { "type": "string" },
+          "allowed_strategies": { "type": "array", "items": { "type": "string" } },
+          "limits": { "$ref": "#/components/schemas/ProfileLimits" },
+          "enabled_tools": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["profile_id", "allowed_strategies", "limits", "enabled_tools"]
+      },
+      "ProfilingRunRequest": {
+        "type": "object",
+        "properties": {
+          "profile_id": { "type": "string" },
+          "force": { "type": "boolean" },
+          "tool_ids": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["profile_id"]
+      },
+      "EvidenceLocator": {
+        "type": "object",
+        "properties": {
+          "chat_id": { "type": "string" },
+          "messageId": { "type": "string" },
+          "external_ref": { "type": "string" }
+        }
+      },
+      "Evidence": {
+        "type": "object",
+        "properties": {
+          "source_type": { "type": "string" },
+          "tool_id": { "type": "string" },
+          "source_id": { "type": "string" },
+          "locator": { "$ref": "#/components/schemas/EvidenceLocator" },
+          "snippet": { "type": "string" },
+          "retrieval_meta": { "type": "object", "additionalProperties": true },
+          "confidence": { "type": "number" }
+        },
+        "required": ["source_type", "tool_id", "source_id", "locator"]
+      },
+      "ProfileLimits": {
+        "type": "object",
+        "properties": {
+          "max_steps": { "type": "integer" },
+          "evidence_min": { "type": "integer" },
+          "evidence_max": { "type": "integer" },
+          "token_max": { "type": "integer" },
+          "per_tool": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "Trace": {
+        "type": "object",
+        "properties": {
+          "trace_id": { "type": "string" },
+          "profile_id": { "type": "string" },
+          "profile_version": { "type": "string" },
+          "router": { "type": "object", "additionalProperties": true },
+          "steps": { "type": "array", "items": { "type": "object" } },
+          "final_status": { "type": "string" },
+          "evidence": { "type": "array", "items": { "$ref": "#/components/schemas/Evidence" } },
+          "user_visible_notes": { "type": "array", "items": { "type": "string" } },
+          "plan_skeleton": { "type": "object", "additionalProperties": true },
+          "plan_execution": { "type": "object", "additionalProperties": true },
+          "evaluations": { "type": "array", "items": { "type": "object" } },
+          "queried_tools_by_step": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } },
+          "step_plans": { "type": "array", "items": { "type": "object" } },
+          "synthesis": { "type": "object", "additionalProperties": true }
+        }
+      }
+    }
+  }
+}
