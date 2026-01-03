@@ -26,6 +26,9 @@ python -m reference_agent.main
 ## API & MCP Adapter
 See `doc/API_MCP.md` for endpoint usage and examples.
 
+## Authentication
+See `doc/AUTH.md` for bearer token setup and rotation.
+
 Configuration files:
 - `config.yaml`
 - `tools/TOOLS.md`

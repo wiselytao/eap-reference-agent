@@ -46,6 +46,9 @@ class AuditConfig(BaseModel):
 
 class SecurityConfig(BaseModel):
     allowed_profiles: List[str] = Field(default_factory=list)
+    require_bearer_token: bool = False
+    bearer_token_active: Optional[str] = None
+    bearer_token_next: Optional[str] = None
 
 
 class ObservabilityConfig(BaseModel):
@@ -79,6 +82,16 @@ def load_yaml(path: Path) -> Dict[str, Any]:
 
 def load_config(path: Path) -> AppConfig:
     data = load_yaml(path)
+    security = data.get("security", {})
+    if "bearer_token_active" not in security:
+        env_active = os.getenv("REFERENCE_AGENT_BEARER_TOKEN")
+        if env_active:
+            security["bearer_token_active"] = env_active
+    if "bearer_token_next" not in security:
+        env_next = os.getenv("REFERENCE_AGENT_BEARER_TOKEN_NEXT")
+        if env_next:
+            security["bearer_token_next"] = env_next
+    data["security"] = security
     return AppConfig(**data)
 
 

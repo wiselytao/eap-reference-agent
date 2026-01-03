@@ -134,6 +134,30 @@
         }
       }
     },
+    "/v1/chat/completions": {
+      "post": {
+        "summary": "OpenAI-compatible chat completions",
+        "operationId": "openai.chat.completions",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OpenAIChatRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Chat completion response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OpenAIChatResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/mcp/reference.ask": {
       "post": {
         "summary": "MCP ask (mirror)",
@@ -342,6 +366,44 @@
           "step_plans": { "type": "array", "items": { "type": "object" } },
           "synthesis": { "type": "object", "additionalProperties": true }
         }
+      },
+      "OpenAIChatMessage": {
+        "type": "object",
+        "properties": {
+          "role": { "type": "string" },
+          "content": {}
+        },
+        "required": ["role", "content"]
+      },
+      "OpenAIChatRequest": {
+        "type": "object",
+        "properties": {
+          "model": { "type": "string" },
+          "messages": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OpenAIChatMessage" }
+          },
+          "stream": { "type": "boolean" },
+          "temperature": { "type": "number" },
+          "max_tokens": { "type": "integer" },
+          "user": { "type": "string" }
+        },
+        "required": ["messages"]
+      },
+      "OpenAIChatResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "object": { "type": "string" },
+          "created": { "type": "integer" },
+          "model": { "type": "string" },
+          "choices": {
+            "type": "array",
+            "items": { "type": "object" }
+          },
+          "usage": { "type": "object" }
+        },
+        "required": ["id", "object", "created", "model", "choices"]
       }
     }
   }

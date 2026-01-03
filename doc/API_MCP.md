@@ -10,7 +10,7 @@ This document describes the Core HTTP API and the MCP adapter endpoints exposed 
 See `doc/openapi.json` (OAS 3.1).
 
 ## Authentication
-Reference Agent uses environment-based credentials for upstream tools (RAG/LLM). The API itself does not require a bearer token unless you add one at the reverse proxy or service layer.
+Reference Agent can optionally require a bearer token. See `doc/AUTH.md`.
 
 ## Core HTTP API
 
@@ -98,6 +98,36 @@ Response:
 ```json
 { "status": "ok" }
 ```
+
+### POST /v1/chat/completions
+OpenAI-compatible chat completion endpoint. This routes to `/ask` internally.
+
+Request:
+```json
+{
+  "model": "reference-agent",
+  "messages": [
+    { "role": "user", "content": "What is X?" }
+  ],
+  "stream": false
+}
+```
+
+Response:
+```json
+{
+  "id": "chatcmpl-...",
+  "object": "chat.completion",
+  "created": 1730000000,
+  "model": "reference-agent",
+  "choices": [
+    { "index": 0, "message": { "role": "assistant", "content": "..." }, "finish_reason": "stop" }
+  ],
+  "usage": { "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0 }
+}
+```
+
+Streaming (SSE) is supported by setting `"stream": true`.
 
 ## MCP Adapter Endpoints
 MCP endpoints mirror the Core API (same payloads), prefixed with `/mcp`.

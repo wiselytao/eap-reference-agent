@@ -36,6 +36,9 @@ from reference_agent.templates import get_template
 class ReferenceAgentService:
     def __init__(self, config_path: Path, tools_path: Path, profiles_dir: Path) -> None:
         self.config = load_config(config_path)
+        self.require_bearer_token = self.config.security.require_bearer_token
+        self.bearer_token_active = self.config.security.bearer_token_active
+        self.bearer_token_next = self.config.security.bearer_token_next
         self.tools_path = tools_path
         self.tools = {tool.tool_id: tool for tool in load_tools_md(tools_path)}
         self.profiles = load_profiles(profiles_dir)

@@ -36,6 +36,9 @@ audit:
 security:
   allowed_profiles:
     - "default"
+  require_bearer_token: false
+  bearer_token_active: ""
+  bearer_token_next: ""
 
 observability:
   log_level: "INFO"

@@ -2,6 +2,21 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.46
+
+### Added
+- Bearer token can be provided via environment variables.
+
+## v1.45
+
+### Added
+- Optional Bearer token auth with active/next rotation and documentation.
+
+## v1.44
+
+### Added
+- OpenAI-compatible `/v1/chat/completions` with optional SSE streaming.
+
 ## v1.43
 
 ### Added
