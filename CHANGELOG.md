@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.47
+
+### Added
+- Standard start/stop scripts in `scripts/`.
+
 ## v1.46
 
 ### Added
