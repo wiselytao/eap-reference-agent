@@ -150,6 +150,34 @@ class StepPlan(BaseModel):
     notes: Optional[str] = None
 
 
+class Claim(BaseModel):
+    claim_id: str
+    tool_id: str
+    subject: str
+    predicate: str
+    object: str
+    qualifiers: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ClaimGroup(BaseModel):
+    canonical_id: str
+    label: str
+    claim_ids: List[str] = Field(default_factory=list)
+    tool_ids: List[str] = Field(default_factory=list)
+    intersection: bool = False
+    conflict: bool = False
+    conflict_notes: Optional[str] = None
+
+
+class SynthesisResult(BaseModel):
+    claims: List[Claim] = Field(default_factory=list)
+    groups: List[ClaimGroup] = Field(default_factory=list)
+    intersection_ids: List[str] = Field(default_factory=list)
+    conflict_ids: List[str] = Field(default_factory=list)
+    mappings: Dict[str, List[str]] = Field(default_factory=dict)
+    notes: Optional[str] = None
+
+
 class Trace(BaseModel):
     trace_id: str
     profile_id: str
@@ -164,6 +192,7 @@ class Trace(BaseModel):
     evaluations: List[EvaluationRecord] = Field(default_factory=list)
     queried_tools_by_step: List[List[str]] = Field(default_factory=list)
     step_plans: List[StepPlan] = Field(default_factory=list)
+    synthesis: Optional[SynthesisResult] = None
 
 
 class PlanSkeleton(BaseModel):

@@ -126,6 +126,7 @@ class ReferenceAgentService:
             evaluations=result.evaluations,
             queried_tools_by_step=self._group_tools_by_step(result.steps),
             step_plans=result.step_plans,
+            synthesis=result.synthesis,
             user_visible_notes=[],
         )
         self.trace_store.save(trace)

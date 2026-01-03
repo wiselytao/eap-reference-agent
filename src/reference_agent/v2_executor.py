@@ -7,6 +7,7 @@ from typing import Dict, List
 from reference_agent.executor import ExecutionResult, StrategyExecutor
 from reference_agent.adapters.llm import LLMClient, LLMRequest
 from reference_agent.evaluator import Evaluator
+from reference_agent.synthesis import CrossRagSynthesizer, SynthesisInput
 from reference_agent.models import (
     Evidence,
     EvaluationRecord,
@@ -31,6 +32,7 @@ class BoundedExecutor:
         self._evaluator = evaluator
         self._llm = llm
         self._model = model
+        self._synthesizer = CrossRagSynthesizer(llm, model) if llm and model else None
 
     def execute(
         self,
@@ -210,7 +212,20 @@ class BoundedExecutor:
             for tool_id, answers in tool_answer_map.items()
             if answers
         ]
-        answer = self._executor.compose_multi(query, tool_answers, evidence)
+        synthesis = None
+        if self._synthesizer:
+            synthesis = self._synthesizer.synthesize(
+                SynthesisInput(
+                    query=query,
+                    tool_answers=tool_answers,
+                    evidence=evidence,
+                    plan_skeleton=plan_skeleton,
+                )
+            )
+        if synthesis and synthesis.groups:
+            answer = self._executor.compose_synthesis(query, synthesis, evidence)
+        else:
+            answer = self._executor.compose_multi(query, tool_answers, evidence)
         if not evidence:
             status = "EMPTY"
         elif len(evidence) >= profile.limits.evidence_min:
@@ -224,6 +239,7 @@ class BoundedExecutor:
             status,
             evaluations=evaluations,
             step_plans=step_plans,
+            synthesis=synthesis,
         )
 
     def _execute_sequential(

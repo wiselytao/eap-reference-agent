@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v1.36
+
+### Changed
+- Trace now records synthesis notes when LLM extraction/alignment fails.
+
+## v1.35
+
+### Added
+- Cross-RAG synthesis pipeline (LLM normalization, alignment, conflict detection, mapping) with trace output.
+
 ## v1.34
 
 ### Changed

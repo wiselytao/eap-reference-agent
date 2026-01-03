@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from reference_agent.adapters.llm import LLMClient, LLMRequest
-from reference_agent.models import Evidence
+from reference_agent.models import Evidence, SynthesisResult
 
 
 class AnswerComposer:
@@ -33,6 +33,14 @@ class AnswerComposer:
             tool_answers
         )
 
+    def compose_synthesis(self, query: str, synthesis: SynthesisResult, evidence: List[Evidence]) -> str:
+        if not self._llm or not self._model:
+            return self._fallback_synthesis(synthesis)
+        prompt = self._build_synthesis_prompt(query, synthesis, evidence)
+        return self._llm.generate(self._model, LLMRequest(prompt, 0.2, 768)).strip() or self._fallback_synthesis(
+            synthesis
+        )
+
     def _fallback_compose(self, local_answer: str, external_answer: str) -> str:
         return (
             "Local evidence summary:\n"
@@ -48,6 +56,16 @@ class AnswerComposer:
         for tool_id, answer in tool_answers:
             parts.append(f"{tool_id} summary:\n{answer}")
         return "\n\n".join(parts)
+
+    def _fallback_synthesis(self, synthesis: SynthesisResult) -> str:
+        if not synthesis.groups:
+            return ""
+        lines = []
+        for group in synthesis.groups:
+            prefix = "Intersection" if group.intersection else "Single-source"
+            conflict = " (conflict)" if group.conflict else ""
+            lines.append(f"{prefix}{conflict}: {group.label}")
+        return "\n".join(lines)
 
     def _build_partial_prompt(self, query: str, answer: str, evidence: List[Evidence], template: str) -> str:
         citations = "\n".join(f"- {item.tool_id}: {item.locator.model_dump()}" for item in evidence)
@@ -210,5 +228,39 @@ class AnswerComposer:
             "[Output requirement]\n"
             "Do NOT expose your reasoning chain.\n"
             "Only output the final answer, but it must reflect the decision you made above.\n\n"
+            "You:\n"
+        )
+
+    def _build_synthesis_prompt(
+        self, query: str, synthesis: SynthesisResult, evidence: List[Evidence]
+    ) -> str:
+        citations = "\n".join(f"- {item.tool_id}: {item.locator.model_dump()}" for item in evidence)
+        synthesis_payload = synthesis.model_dump()
+        return (
+            "Task:\n"
+            "You are an answer generator within a RAG system that performs cross-source synthesis. "
+            "Use the synthesized claims, intersections, mappings, and conflicts below to answer the question. "
+            "Prioritize intersection results, explicitly disclose conflicts or uncertainty, and avoid merging "
+            "contradictory claims.\n\n"
+            f"Question: {query}\n\n"
+            "<SYNTHESIS>\n"
+            f"{synthesis_payload}\n"
+            "<SYNTHESIS>\n\n"
+            "Evidence locators\n"
+            f"{citations}\n\n"
+            "Note:\n"
+            "1. Use markdown to format the answer. Use markdown to highlight keywords instead of using double quotes.\n"
+            "2. Don't repeat the question in the answer. Skip the main title of the article. Start straight with the "
+            "introduction.\n"
+            "3. When using tables, use markdown table syntax.\n"
+            "4. When using charts, create a code block and output a chart using this format: \"chartType: Title of "
+            "the chart\".\n"
+            "5. Do not include any explaination or other texts except the code block.\n"
+            "6. If the retrieved data is missing or not enough to answer the question, simply explain to the user you "
+            "did not find the data, do not reveal the details of the failed attempts.\n"
+            "7. You can also ask questions to the user to clarify the question the user asked.\n"
+            "8. Answer in the language of the question. If not sure about the language, the default is English.\n"
+            "9. Pay attention to whether it is uppercase of lowercase the relationship is. Use casing according to "
+            "the schema.\n\n"
             "You:\n"
         )

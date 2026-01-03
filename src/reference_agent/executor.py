@@ -7,7 +7,16 @@ from typing import Dict, List, Optional, Tuple
 from reference_agent.adapters.external_mcp import ExternalMcpClient, ExternalMcpConfig
 from reference_agent.adapters.hybridrag import HybridRagClient, HybridRagConfig, build_hybrid_evidence
 from reference_agent.composer import AnswerComposer
-from reference_agent.models import Evidence, EvaluationRecord, Profile, StepPlan, StepRecord, ToolEntry, ToolHealth
+from reference_agent.models import (
+    Evidence,
+    EvaluationRecord,
+    Profile,
+    StepPlan,
+    StepRecord,
+    SynthesisResult,
+    ToolEntry,
+    ToolHealth,
+)
 from reference_agent.secrets import resolve_secret
 from reference_agent import strategies
 
@@ -20,6 +29,7 @@ class ExecutionResult:
     status: str
     evaluations: List[EvaluationRecord] = field(default_factory=list)
     step_plans: List["StepPlan"] = field(default_factory=list)
+    synthesis: SynthesisResult | None = None
 
 
 class StrategyExecutor:
@@ -61,6 +71,9 @@ class StrategyExecutor:
 
     def compose_multi(self, query: str, tool_answers: List[tuple[str, str]], evidence: List[Evidence]) -> str:
         return self._composer.compose_multi(query, tool_answers, evidence)
+
+    def compose_synthesis(self, query: str, synthesis: SynthesisResult, evidence: List[Evidence]) -> str:
+        return self._composer.compose_synthesis(query, synthesis, evidence)
 
     def evaluate_status(
         self, profile: Profile, tool: ToolEntry, evidence: List[Evidence], required: bool
