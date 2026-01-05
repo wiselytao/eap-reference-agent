@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v2.2
+
+### Changed
+- OpenAI-compatible endpoint now accepts `prompt`/`input` when `messages` is missing.
+
+## v2.1
+
+### Changed
+- Start script now prefers `.venv/bin/python` when available.
+
 ## v2.0
 
 ### Added

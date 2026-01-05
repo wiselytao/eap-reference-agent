@@ -41,19 +41,12 @@ def create_app() -> FastAPI:
         role: str
         content: Any
 
-    class OpenAIChatRequest(BaseModel):
-        model: Optional[str] = None
-        messages: List[OpenAIChatMessage]
-        stream: bool = False
-        temperature: Optional[float] = None
-        max_tokens: Optional[int] = None
-        user: Optional[str] = None
-
-    def _extract_query(messages: List[OpenAIChatMessage]) -> str:
+    def _extract_query(messages: List[Any]) -> str:
         for message in reversed(messages):
-            if message.role != "user":
+            role = message.get("role") if isinstance(message, dict) else message.role
+            if role != "user":
                 continue
-            content = message.content
+            content = message.get("content") if isinstance(message, dict) else message.content
             if isinstance(content, str):
                 return content
             if isinstance(content, list):
@@ -155,18 +148,31 @@ def create_app() -> FastAPI:
         return capabilities(profile_id)
 
     @app.post("/v1/chat/completions")
-    def openai_chat(request: OpenAIChatRequest):
-        query = _extract_query(request.messages)
+    async def openai_chat(request: Request):
+        try:
+            payload = await request.json()
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        messages = payload.get("messages")
+        if not messages:
+            prompt = payload.get("prompt") or payload.get("input")
+            if isinstance(prompt, str) and prompt:
+                messages = [{"role": "user", "content": prompt}]
+        if not isinstance(messages, list) or not messages:
+            raise HTTPException(status_code=400, detail="No messages provided.")
+        query = _extract_query(messages)
         if not query:
             raise HTTPException(status_code=400, detail="No user message found.")
         try:
             response = service.ask(AskRequest(query=query, profile_id="default"))
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        if request.stream:
+        stream = bool(payload.get("stream"))
+        model = payload.get("model")
+        if stream:
             return StreamingResponse(
-                _openai_stream(response.answer, request.model), media_type="text/event-stream"
+                _openai_stream(response.answer, model), media_type="text/event-stream"
             )
-        return _openai_response(response.answer, request.model)
+        return _openai_response(response.answer, model)
 
     return app

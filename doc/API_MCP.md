@@ -128,6 +128,7 @@ Response:
 ```
 
 Streaming (SSE) is supported by setting `"stream": true`.
+If a client sends `prompt` or `input` instead of `messages`, RA will treat it as a single user message.
 
 ## MCP Adapter Endpoints
 MCP endpoints mirror the Core API (same payloads), prefixed with `/mcp`.

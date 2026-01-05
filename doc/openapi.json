@@ -383,12 +383,14 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/OpenAIChatMessage" }
           },
+          "prompt": { "type": "string" },
+          "input": { "type": "string" },
           "stream": { "type": "boolean" },
           "temperature": { "type": "number" },
           "max_tokens": { "type": "integer" },
           "user": { "type": "string" }
         },
-        "required": ["messages"]
+        "required": []
       },
       "OpenAIChatResponse": {
         "type": "object",

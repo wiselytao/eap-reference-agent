@@ -26,6 +26,7 @@ python -m reference_agent.main
 ## Start/Stop Scripts
 - Start: `scripts/start.sh`
 - Stop: `scripts/stop.sh`
+`scripts/start.sh` prefers `.venv/bin/python` if present, otherwise falls back to `python3` or `python`.
 
 ## API & MCP Adapter
 See `doc/API_MCP.md` for endpoint usage and examples.
