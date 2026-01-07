@@ -38,6 +38,7 @@ class RuntimeConfig(BaseModel):
     timeout_seconds: int = 60
     concurrency: int = 4
     port: int = 8080
+    stream_status_updates: bool = True
 
 
 class AuditConfig(BaseModel):
@@ -90,6 +91,9 @@ def load_config(path: Path) -> AppConfig:
             runtime["port"] = int(env_port)
         except ValueError as exc:
             raise ValueError("Invalid REFERENCE_AGENT_PORT; must be an integer.") from exc
+    env_stream = os.getenv("REFERENCE_AGENT_STREAM_STATUS_UPDATES")
+    if env_stream is not None:
+        runtime["stream_status_updates"] = env_stream.strip().lower() in {"1", "true", "yes", "on"}
     data["runtime"] = runtime
     security = data.get("security", {})
     if "bearer_token_active" not in security:

@@ -2,6 +2,31 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v2.17
+
+### Changed
+- Streaming status updates now group `<think>` blocks by phase with an initialize event.
+
+## v2.16
+
+### Changed
+- Streaming status updates now wrap in `<think>` tags.
+
+## v2.15
+
+### Changed
+- Streaming status updates now render as markdown with a separator before the answer.
+
+## v2.14
+
+### Added
+- Optional streaming status updates in OpenAI-compatible SSE responses.
+
+## v2.13
+
+### Added
+- Streaming status updates via `POST /ask/stream` (SSE).
+
 ## v2.12
 
 ### Added

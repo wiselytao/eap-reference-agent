@@ -47,6 +47,21 @@ Response:
 }
 ```
 
+### POST /ask/stream
+Stream status updates (SSE) and the final answer. The response is `text/event-stream`.
+
+Events:
+- `status`: progress updates such as `plan_started`, `step_started`, `tool_started`, `tool_completed`, `step_completed`, `composing_started`, `composing_completed`.
+- `final`: final response payload (`answer`, `evidence`, `trace_id`, `status`).
+- `error`: error payload (`error`).
+
+Example (streaming):
+```bash
+curl -N -X POST http://localhost:8080/ask/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query":"What is X?","profile_id":"default"}'
+```
+
 ### GET /trace/{trace_id}
 Fetch the full trace for audit and debugging.
 

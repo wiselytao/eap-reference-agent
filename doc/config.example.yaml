@@ -29,6 +29,7 @@ runtime:
   timeout_seconds: 300
   concurrency: 4
   port: 8080
+  stream_status_updates: true
 
 audit:
   trace_dir: "data/traces"

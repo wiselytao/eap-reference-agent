@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import json
-from typing import Dict, List
+from typing import Callable, Dict, List
 
 from reference_agent.executor import ExecutionResult, StrategyExecutor
 from reference_agent.adapters.llm import LLMClient, LLMRequest
@@ -41,12 +41,13 @@ class BoundedExecutor:
         query: str,
         profile: Profile,
         tools: Dict[str, ToolEntry],
+        event_handler: Callable[[dict], None] | None = None,
     ) -> ExecutionResult:
         if plan.template == "T3":
-            return self._execute_t3(plan, plan_skeleton, query, profile, tools)
+            return self._execute_t3(plan, plan_skeleton, query, profile, tools, event_handler)
         if plan.template == "DYNAMIC":
-            return self._execute_dynamic(plan_skeleton, query, profile, tools)
-        return self._execute_sequential(plan.steps, plan_skeleton, query, profile, tools)
+            return self._execute_dynamic(plan_skeleton, query, profile, tools, event_handler)
+        return self._execute_sequential(plan.steps, plan_skeleton, query, profile, tools, event_handler)
 
     def _execute_t3(
         self,
@@ -55,22 +56,49 @@ class BoundedExecutor:
         query: str,
         profile: Profile,
         tools: Dict[str, ToolEntry],
+        event_handler: Callable[[dict], None] | None,
     ) -> ExecutionResult:
         external_tool = self._get_tool_by_prefix(plan.steps, tools, "EXTERNAL")
         local_tool = self._get_tool_by_prefix(plan.steps, tools, None)
         if not external_tool or not local_tool:
             return ExecutionResult("", [], [], "FAILED")
 
+        self._emit(event_handler, {"type": "step_started", "step_index": 1, "tool_ids": [external_tool.tool_id, local_tool.tool_id]})
         with ThreadPoolExecutor(max_workers=2) as pool:
+            self._emit(event_handler, {"type": "tool_started", "step_index": 1, "tool_id": external_tool.tool_id})
+            self._emit(event_handler, {"type": "tool_started", "step_index": 1, "tool_id": local_tool.tool_id})
             external_future = pool.submit(self._executor.call_tool, external_tool, query)
             local_future = pool.submit(self._executor.call_tool, local_tool, query)
             external_answer, external_evidence, external_step = external_future.result()
             local_answer, local_evidence, local_step = local_future.result()
+            self._emit(
+                event_handler,
+                {
+                    "type": "tool_completed",
+                    "step_index": 1,
+                    "tool_id": external_tool.tool_id,
+                    "duration_ms": external_step.duration_ms,
+                    "error_code": external_step.error_code,
+                },
+            )
+            self._emit(
+                event_handler,
+                {
+                    "type": "tool_completed",
+                    "step_index": 1,
+                    "tool_id": local_tool.tool_id,
+                    "duration_ms": local_step.duration_ms,
+                    "error_code": local_step.error_code,
+                },
+            )
 
         evidence = external_evidence + local_evidence
         steps = [external_step, local_step]
+        self._emit(event_handler, {"type": "composing_started"})
         answer = self._executor.compose_external(query, local_answer, external_answer, evidence)
+        self._emit(event_handler, {"type": "composing_completed"})
         status = self._executor.evaluate_fork_join_status(profile, local_tool, external_tool, evidence)
+        self._emit(event_handler, {"type": "step_completed", "step_index": 1})
         evaluation = self._evaluator.evaluate(
             plan_skeleton,
             answer,
@@ -88,6 +116,7 @@ class BoundedExecutor:
         query: str,
         profile: Profile,
         tools: Dict[str, ToolEntry],
+        event_handler: Callable[[dict], None] | None,
     ) -> ExecutionResult:
         evidence: List[Evidence] = []
         step_records = []
@@ -143,6 +172,15 @@ class BoundedExecutor:
                 current_query,
                 evaluations[-1] if evaluations else None,
             )
+            self._emit(
+                event_handler,
+                {
+                    "type": "step_started",
+                    "step_index": step_index,
+                    "tool_ids": step_tool_ids,
+                    "question_count": len(questions),
+                },
+            )
             max_workers = min(12, len(step_tool_ids) * len(questions)) or 1
             with ThreadPoolExecutor(max_workers=max_workers) as pool:
                 futures = {}
@@ -151,6 +189,15 @@ class BoundedExecutor:
                     if not tool:
                         continue
                     for q_index, question in enumerate(questions, start=1):
+                        self._emit(
+                            event_handler,
+                            {
+                                "type": "tool_started",
+                                "step_index": step_index,
+                                "tool_id": tool_id,
+                                "query_index": q_index,
+                            },
+                        )
                         futures[(tool_id, q_index)] = pool.submit(
                             self._executor.call_tool, tool, question
                         )
@@ -163,6 +210,17 @@ class BoundedExecutor:
                     evidence.extend(step_evidence)
                     step_answers.append(f"[{tool_id}#{q_index}] {answer}".strip())
                     tool_answer_map.setdefault(tool_id, []).append(answer)
+                    self._emit(
+                        event_handler,
+                        {
+                            "type": "tool_completed",
+                            "step_index": step_index,
+                            "tool_id": tool_id,
+                            "query_index": q_index,
+                            "duration_ms": step_record.duration_ms,
+                            "error_code": step_record.error_code,
+                        },
+                    )
 
             step_plans.append(
                 StepPlan(
@@ -186,6 +244,7 @@ class BoundedExecutor:
                 max_steps=profile.limits.max_steps,
             )
             evaluations.append(evaluation)
+            self._emit(event_handler, {"type": "step_completed", "step_index": step_index})
             if step_index > 1:
                 prev = evaluations[-2]
                 coverage_progress = len(evaluation.missing_items) < len(prev.missing_items)
@@ -223,9 +282,13 @@ class BoundedExecutor:
                 )
             )
         if synthesis and synthesis.groups:
+            self._emit(event_handler, {"type": "composing_started"})
             answer = self._executor.compose_synthesis(query, synthesis, evidence)
+            self._emit(event_handler, {"type": "composing_completed"})
         else:
+            self._emit(event_handler, {"type": "composing_started"})
             answer = self._executor.compose_multi(query, tool_answers, evidence)
+            self._emit(event_handler, {"type": "composing_completed"})
         if not evidence:
             status = "EMPTY"
         elif len(evidence) >= profile.limits.evidence_min:
@@ -249,6 +312,7 @@ class BoundedExecutor:
         query: str,
         profile: Profile,
         tools: Dict[str, ToolEntry],
+        event_handler: Callable[[dict], None] | None,
     ) -> ExecutionResult:
         evidence: List[Evidence] = []
         step_records = []
@@ -260,10 +324,25 @@ class BoundedExecutor:
             tool = tools.get(step.tool_id or "")
             if not tool:
                 return ExecutionResult("", evidence, step_records, "FAILED")
+            self._emit(
+                event_handler,
+                {"type": "step_started", "step_index": idx, "tool_ids": [tool.tool_id]},
+            )
+            self._emit(event_handler, {"type": "tool_started", "step_index": idx, "tool_id": tool.tool_id})
             answer, step_evidence, step_record = self._executor.call_tool(tool, current_query)
             evidence.extend(step_evidence)
             step_records.append(step_record)
             last_tool = tool
+            self._emit(
+                event_handler,
+                {
+                    "type": "tool_completed",
+                    "step_index": idx,
+                    "tool_id": tool.tool_id,
+                    "duration_ms": step_record.duration_ms,
+                    "error_code": step_record.error_code,
+                },
+            )
 
             evaluation = self._evaluator.evaluate(
                 plan_skeleton,
@@ -275,6 +354,7 @@ class BoundedExecutor:
                 max_steps=profile.limits.max_steps,
             )
             evaluations.append(evaluation)
+            self._emit(event_handler, {"type": "step_completed", "step_index": idx})
             if evaluation.coverage_complete and evaluation.evidence_count >= profile.limits.evidence_min:
                 best_answer = answer
             if idx > 1:
@@ -490,3 +570,8 @@ class BoundedExecutor:
             if prefix is None and tool.type != "external_mcp":
                 return tool
         return None
+
+    @staticmethod
+    def _emit(handler: Callable[[dict], None] | None, payload: dict) -> None:
+        if handler:
+            handler(payload)

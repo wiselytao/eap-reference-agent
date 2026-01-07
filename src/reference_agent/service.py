@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import json
 import re
 import uuid
 from pathlib import Path
 import asyncio
-from typing import Dict, Optional
+from queue import Queue
+from threading import Thread
+from typing import Callable, Dict, Iterable, Optional
 
 from reference_agent.adapters.llm import LLMClient
 from reference_agent.adapters.hybridrag import HybridRagClient, HybridRagConfig
@@ -82,8 +83,51 @@ class ReferenceAgentService:
         self.bounded_executor = BoundedExecutor(self.executor, self.evaluator, plan_llm, plan_model)
 
     def ask(self, request: AskRequest) -> AskResponse:
+        return self._ask_impl(request, None)
+
+    def ask_stream(self, request: AskRequest) -> Iterable[dict]:
+        queue: Queue[object] = Queue()
+        done = object()
+
+        def emit(event: dict) -> None:
+            queue.put(event)
+
+        def run() -> None:
+            try:
+                response = self._ask_impl(request, emit)
+                queue.put(
+                    {
+                        "type": "final",
+                        "answer": response.answer,
+                        "evidence": [e.model_dump() for e in response.evidence],
+                        "trace_id": response.trace_id,
+                        "status": response.status,
+                    }
+                )
+            except Exception as exc:
+                queue.put({"type": "error", "error": str(exc)})
+            finally:
+                queue.put(done)
+
+        Thread(target=run, daemon=True).start()
+        queue.put({"type": "initialize"})
+
+        def stream() -> Iterable[dict]:
+            while True:
+                item = queue.get()
+                if item is done:
+                    break
+                if isinstance(item, dict):
+                    yield item
+
+        return stream()
+
+    def _ask_impl(
+        self, request: AskRequest, event_handler: Callable[[dict], None] | None
+    ) -> AskResponse:
         profile = self._get_profile(request.profile_id)
         self._ensure_profiling(profile)
+        self._emit(event_handler, {"type": "plan_started"})
         plan_skeleton = self.plan_builder.build(request.query, profile, self.tools)
         plan_execution = self.bounded_planner.build(request.query, profile, self.tools, request.context)
         router_output = (
@@ -93,8 +137,16 @@ class ReferenceAgentService:
             if not request.strategy_id
             else self._manual_strategy(request.strategy_id, profile)
         )
+        self._emit(
+            event_handler,
+            {
+                "type": "plan_completed",
+                "strategy_id": router_output.strategy_id,
+                "selected_tools": [tool.get("tool_id") for tool in router_output.selected_tools],
+            },
+        )
         result = self.bounded_executor.execute(
-            plan_execution, plan_skeleton, request.query, profile, self.tools
+            plan_execution, plan_skeleton, request.query, profile, self.tools, event_handler
         )
         evidence = sort_evidence(dedupe_evidence(result.evidence))
         evidence = evidence[: profile.limits.evidence_max]
@@ -207,6 +259,11 @@ class ReferenceAgentService:
             else:
                 health.failure_count = 0
                 health.healthy = True
+
+    @staticmethod
+    def _emit(handler: Callable[[dict], None] | None, payload: dict) -> None:
+        if handler:
+            handler(payload)
 
     @staticmethod
     def _group_tools_by_step(steps: list[StepRecord]) -> list[list[str]]:

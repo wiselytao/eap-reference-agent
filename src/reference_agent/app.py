@@ -103,12 +103,133 @@ def create_app() -> FastAPI:
         yield f"data: {json.dumps(tail)}\n\n".encode("utf-8")
         yield b"data: [DONE]\n\n"
 
+    def _openai_stream_with_status(answer_stream: Iterable[dict], model: str | None) -> Iterable[bytes]:
+        stream_id = f"chatcmpl-{uuid.uuid4().hex}"
+        created = int(time.time())
+        current_phase: str | None = None
+        header = {
+            "id": stream_id,
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model or "reference-agent",
+            "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
+        }
+        yield f"data: {json.dumps(header)}\n\n".encode("utf-8")
+        for event in answer_stream:
+            event_type = event.get("type")
+            if event_type == "final":
+                content = event.get("answer", "")
+            elif event_type == "error":
+                prefix = "</think>\n" if current_phase else ""
+                current_phase = None
+                content = f"{prefix}⏳ error: {event.get('error')}\n"
+            else:
+                content, current_phase = _format_status_event(event, current_phase)
+            if not content:
+                continue
+            body = {
+                "id": stream_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model or "reference-agent",
+                "choices": [{"index": 0, "delta": {"content": content}, "finish_reason": None}],
+            }
+            yield f"data: {json.dumps(body)}\n\n".encode("utf-8")
+        tail = {
+            "id": stream_id,
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model or "reference-agent",
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+        }
+        yield f"data: {json.dumps(tail)}\n\n".encode("utf-8")
+        yield b"data: [DONE]\n\n"
+
+    def _format_status_event(event: dict, current_phase: str | None) -> tuple[str, str | None]:
+        event_type = event.get("type")
+        prefix = ""
+        next_phase = current_phase
+        if event_type == "initialize":
+            next_phase = "initialize"
+            if current_phase != next_phase:
+                if current_phase:
+                    prefix += "</think>\n"
+                prefix += "<think>\n"
+            return f"{prefix}- ⏳ initializing\n", next_phase
+        if event_type == "plan_started":
+            next_phase = "plan"
+            if current_phase != next_phase:
+                if current_phase:
+                    prefix += "</think>\n"
+                prefix += "<think>\n"
+            return f"{prefix}- ⏳ planning started\n", next_phase
+        if event_type == "plan_completed":
+            tools = ", ".join(event.get("selected_tools") or [])
+            return (
+                f"- ⏳ planning completed (strategy: {event.get('strategy_id')}, tools: {tools})\n</think>\n",
+                None,
+            )
+        if event_type == "step_started":
+            step = event.get("step_index")
+            tools = ", ".join(event.get("tool_ids") or [])
+            next_phase = f"step:{step}"
+            if current_phase != next_phase:
+                if current_phase:
+                    prefix += "</think>\n"
+                prefix += "<think>\n"
+            return f"{prefix}- ⏳ step {step} started (tools: {tools})\n", next_phase
+        if event_type == "tool_started":
+            step = event.get("step_index")
+            tool = event.get("tool_id")
+            q_index = event.get("query_index")
+            suffix = f" q{q_index}" if q_index else ""
+            return f"- ⏳ step {step} tool started: {tool}{suffix}\n", next_phase
+        if event_type == "tool_completed":
+            step = event.get("step_index")
+            tool = event.get("tool_id")
+            duration = event.get("duration_ms")
+            err = event.get("error_code")
+            status = "error" if err else "ok"
+            suffix = f" ({duration}ms)" if duration is not None else ""
+            return f"- ⏳ step {step} tool completed: {tool} {status}{suffix}\n", next_phase
+        if event_type == "step_completed":
+            step = event.get("step_index")
+            return f"- ⏳ step {step} completed\n</think>\n", None
+        if event_type == "composing_started":
+            next_phase = "composing"
+            if current_phase != next_phase:
+                if current_phase:
+                    prefix += "</think>\n"
+                prefix += "<think>\n"
+            return f"{prefix}- ⏳ composing answer\n", next_phase
+        if event_type == "composing_completed":
+            return "- ⏳ answer composed\n</think>\n\n---\n\n", None
+        return "", current_phase
+
+    def _sse_event(event_name: str, payload: dict) -> bytes:
+        return f"event: {event_name}\ndata: {json.dumps(payload)}\n\n".encode("utf-8")
+
     @app.post("/ask", response_model=AskResponse)
     def ask(request: AskRequest) -> AskResponse:
         try:
             return service.ask(request)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/ask/stream")
+    def ask_stream(request: AskRequest):
+        def event_stream() -> Iterable[bytes]:
+            for event in service.ask_stream(request):
+                event_type = event.get("type")
+                if event_type == "final":
+                    yield _sse_event("final", event)
+                elif event_type == "error":
+                    yield _sse_event("error", event)
+                else:
+                    yield _sse_event("status", event)
+            yield b"data: [DONE]\n\n"
+
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
 
     @app.get("/trace/{trace_id}")
     def trace(trace_id: str):
@@ -170,9 +291,22 @@ def create_app() -> FastAPI:
         stream = bool(payload.get("stream"))
         model = payload.get("model")
         if stream:
-            return StreamingResponse(
-                _openai_stream(response.answer, model), media_type="text/event-stream"
-            )
+            if service.config.runtime.stream_status_updates:
+                return StreamingResponse(
+                    _openai_stream_with_status(
+                        service.ask_stream(
+                            AskRequest(
+                                query=query,
+                                profile_id=payload.get("profile_id", "default"),
+                                context=payload.get("context"),
+                                strategy_id=payload.get("strategy_id"),
+                            )
+                        ),
+                        model,
+                    ),
+                    media_type="text/event-stream",
+                )
+            return StreamingResponse(_openai_stream(response.answer, model), media_type="text/event-stream")
         return _openai_response(response.answer, model)
 
     return app

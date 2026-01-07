@@ -30,6 +30,7 @@ python -m reference_agent.main
 
 ## API & MCP Adapter
 See `doc/API_MCP.md` for endpoint usage and examples.
+Progress streaming is available via `POST /ask/stream` (SSE).
 
 ## Authentication
 See `doc/AUTH.md` for bearer token setup and rotation.
@@ -47,6 +48,9 @@ Override their paths with:
 Port configuration:
 - `runtime.port` in `config.yaml` (default 8080)
 - `REFERENCE_AGENT_PORT` env var overrides the config value
+- Streaming status updates in `/v1/chat/completions`:
+  - `runtime.stream_status_updates: true`
+  - `REFERENCE_AGENT_STREAM_STATUS_UPDATES=true`
 
 Environment tools (optional):
 - `TOOL_<id>_BASE_URL` + `TOOL_<id>_KEY` + `TOOL_<id>_RAG` (VECTOR/GRAPH/HYBRID/HYBRIDCOT) will be loaded automatically.
