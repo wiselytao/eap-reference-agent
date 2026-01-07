@@ -71,6 +71,12 @@ class HybridRagClient:
         response.raise_for_status()
         return response.json()
 
+    def get_validation(self, chat_id: str, message_id: str) -> dict:
+        url = f"{self._base_url}/api/v1/chat/{chat_id}/{message_id}/validation"
+        response = httpx.get(url, headers=self._headers(), timeout=self._timeout)
+        response.raise_for_status()
+        return response.json()
+
 
 def build_hybrid_evidence(tool_id: str, chat_id: str, message_id: str, snippet: Optional[str]) -> Evidence:
     locator = EvidenceLocator(chat_id=chat_id, messageId=message_id)

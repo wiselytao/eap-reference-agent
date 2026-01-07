@@ -2,6 +2,50 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.0
+
+### Changed
+- References now render as a markdown section with list entries.
+
+## v2.9
+
+### Changed
+- References now group pages per file into a single entry.
+
+## v2.8
+
+### Changed
+- References are now sorted by filename then page number.
+
+## v2.7
+
+### Changed
+- References now list file, page (parsed from content), and URL for each validation document.
+
+## v2.6
+
+### Changed
+- References now include raw validation JSON for all evidences.
+
+## v2.5
+
+### Added
+- Append References section with document names and download links resolved from validation data.
+
+### Changed
+- Use tool project_id as tenant header when resolving document links.
+
+## v2.4
+
+### Fixed
+- Fix test fixture config formatting to avoid `.format` brace collisions.
+
+## v2.3
+
+### Added
+- Append reference information to answers using evidence validation data when available.
+- Fetch hybrid RAG validation data to resolve evidence sources.
+
 ## v2.2
 
 ### Changed

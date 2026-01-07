@@ -15,7 +15,7 @@ def temp_config(tmp_path: Path):
     profiles_dir.mkdir()
 
     config_path.write_text(
-        """
+        f"""
 llm:
   provider: openai_compatible
   base_url: "http://example.com"
@@ -32,7 +32,7 @@ llm:
     api_key_ref: ""
     temperature: 0.0
     max_tokens: 32
-    extra: {}
+    extra: {{}}
   evaluator:
     provider: ""
     base_url: ""
@@ -40,16 +40,14 @@ llm:
     api_key_ref: ""
     temperature: 0.0
     max_tokens: 32
-    extra: {}
+    extra: {{}}
 
 audit:
-  trace_dir: "{trace_dir}"
+  trace_dir: "{tmp_path / "traces"}"
 security:
   allowed_profiles:
     - "default"
-""".format(
-            trace_dir=str(tmp_path / "traces")
-        )
+"""
     )
 
     tools_path.write_text(

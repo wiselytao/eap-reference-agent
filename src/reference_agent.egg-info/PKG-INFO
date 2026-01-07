@@ -28,18 +28,46 @@ source .venv/bin/activate
 pip install -e .
 export OPENAI_API_KEY=your_key
 export HYBRIDRAG_API_TOKEN=your_token
-uvicorn reference_agent.main:app --host 0.0.0.0 --port 8080
+python -m reference_agent.main
 ```
+
+## Install & Configure
+1) Create a virtual environment and install the package.
+2) Copy `doc/config.example.yaml` to `config.yaml` and adjust values.
+3) Copy `doc/env.example` to `.env.local` (or export variables manually).
+4) Set required environment variables (e.g., `AOAI_KEY`, `TOOL_<id>_KEY`).
+5) Start the service with `python -m reference_agent.main`.
+
+## Start/Stop Scripts
+- Start: `scripts/start.sh`
+- Stop: `scripts/stop.sh`
+`scripts/start.sh` prefers `.venv/bin/python` if present, otherwise falls back to `python3` or `python`.
+
+## API & MCP Adapter
+See `doc/API_MCP.md` for endpoint usage and examples.
+
+## Authentication
+See `doc/AUTH.md` for bearer token setup and rotation.
 
 Configuration files:
 - `config.yaml`
-- `TOOLS.md`
+- `tools/TOOLS.md`
 - `profiles/default.yaml`
 
 Override their paths with:
 - `REFERENCE_AGENT_CONFIG`
 - `REFERENCE_AGENT_TOOLS`
 - `REFERENCE_AGENT_PROFILES`
+
+Environment tools (optional):
+- `TOOL_<id>_BASE_URL` + `TOOL_<id>_KEY` + `TOOL_<id>_RAG` (VECTOR/GRAPH/HYBRID/HYBRIDCOT) will be loaded automatically.
+  If a profile uses `enabled_tools: ["*"]` and env tools exist, only env tools are enabled.
+
+## Profiling (v2)
+- Profiling files are stored in `tools/profiling/` with filenames `<tool_id>-MMDDHHmm.yaml`.
+- If a tool has no `summary` in `tools/TOOLS.md`, runtime probing will ask up to 3 questions in parallel and save a profiling summary.
+- `TOOLS.md` changes trigger re-profiling for affected tools on the next request.
+- Manual profiling: `python scripts/profile_tools.py --profile default --force` (or `--tool-id <id>`).
 
 ## Docker
 ```bash
@@ -53,8 +81,17 @@ docker run -p 8080:8080 \
 ## Systemd Service
 See `deploy/reference-agent.service` for a sample unit file. Update paths and environment variables before use.
 
+## HTTPS (TLS)
+Set `tls.enabled: true` and provide `tls.certfile` + `tls.keyfile` in `config.yaml`, then run:
+```bash
+python -m reference_agent.main
+```
+The API and MCP adapter will be served over HTTPS.
+
 ## Tests
 ```bash
 pip install -e .[test]
 pytest
 ```
+
+Note: tests use `httpx.ASGITransport` (required for httpx 0.28+).

@@ -1,0 +1,22 @@
+tool_id: demo.hybrid
+generated_at: '2026-01-06T01:40:25'
+pipeline_prefix: 'HYBRID:'
+questions:
+- What topics does this dataset cover?
+- Provide 3 example questions this dataset can answer.
+- List key entities or concepts (5-10) that appear frequently.
+profile_summary: 'Q: What topics does this dataset cover?
+
+  A: Answer
+
+
+  Q: Provide 3 example questions this dataset can answer.
+
+  A: Answer
+
+
+  Q: List key entities or concepts (5-10) that appear frequently.
+
+  A: Answer'
+tool_hash: 51711ec4615fd79b686ff8e50157204cc012993813cc431b27d570417dee67d6
+schema: {}

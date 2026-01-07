@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
+import re
 import uuid
 from pathlib import Path
 import asyncio
 from typing import Dict, Optional
 
 from reference_agent.adapters.llm import LLMClient
+from reference_agent.adapters.hybridrag import HybridRagClient, HybridRagConfig
 from reference_agent.composer import AnswerComposer
 from reference_agent.config import load_config, load_profiles, load_tools_md
 from reference_agent.evidence import dedupe_evidence, sort_evidence
@@ -121,6 +124,10 @@ class ReferenceAgentService:
             if template not in answer:
                 answer = f"{template}\n\n{answer}"
 
+        reference_section = self._build_reference_section(evidence)
+        if reference_section:
+            answer = f"{answer.rstrip()}\n\n{reference_section}"
+
         trace = Trace(
             trace_id=str(uuid.uuid4()),
             profile_id=profile.profile_id,
@@ -215,6 +222,141 @@ class ReferenceAgentService:
             if tool_id not in bucket:
                 bucket.append(tool_id)
         return [grouped_map[key] for key in sorted(grouped_map)]
+
+    def _build_reference_section(self, evidence: list[Evidence]) -> str:
+        if not evidence:
+            return ""
+        references = self._collect_reference_entries(evidence)
+        if not references:
+            return ""
+        references.sort(key=self._reference_sort_key)
+        grouped = self._group_reference_entries(references)
+        lines = ["## References"]
+        for idx, entry in enumerate(grouped, start=1):
+            line = f"- {entry['file']}"
+            if entry.get("pages"):
+                line = f"{line} — p. {', '.join(entry['pages'])}"
+            if entry.get("url"):
+                line = f"{line} — {entry['url']}"
+            lines.append(line)
+        return "\n".join(lines)
+
+    def _collect_reference_entries(self, evidence: list[Evidence]) -> list[dict[str, str]]:
+        entries: list[dict[str, str]] = []
+        seen_validation: set[tuple[str, str, str]] = set()
+        seen_entry: set[tuple[str, str, str]] = set()
+        for item in evidence:
+            tool = self.tools.get(item.tool_id)
+            locator = item.locator
+            if not tool or tool.adapter != "hybridrag_chat_api_v1":
+                continue
+            if not locator or not locator.chat_id or not locator.messageId:
+                continue
+            cache_key = (tool.tool_id, locator.chat_id, locator.messageId)
+            if cache_key in seen_validation:
+                continue
+            seen_validation.add(cache_key)
+            payload = self._fetch_validation_payload(tool, locator.chat_id, locator.messageId)
+            for entry in self._extract_reference_entries(tool, payload):
+                entry_key = (entry.get("file", ""), entry.get("page", ""), entry.get("url", ""))
+                if entry_key in seen_entry:
+                    continue
+                seen_entry.add(entry_key)
+                entries.append(entry)
+        return entries
+
+    @staticmethod
+    def _reference_sort_key(entry: dict[str, str]) -> tuple[str, int, str]:
+        file_name = entry.get("file", "")
+        page = entry.get("page", "")
+        try:
+            page_num = int(page)
+        except (TypeError, ValueError):
+            page_num = 10**9
+        url = entry.get("url", "")
+        return (file_name, page_num, url)
+
+    @staticmethod
+    def _group_reference_entries(entries: list[dict[str, str]]) -> list[dict[str, object]]:
+        grouped: dict[tuple[str, str], dict[str, object]] = {}
+        for entry in entries:
+            file_name = entry.get("file", "")
+            url = entry.get("url", "")
+            key = (file_name, url)
+            if key not in grouped:
+                grouped[key] = {"file": file_name, "url": url, "pages": []}
+            page = entry.get("page", "")
+            if page:
+                grouped[key]["pages"].append(page)
+        results: list[dict[str, object]] = []
+        for item in grouped.values():
+            pages = sorted(
+                {p for p in item["pages"] if p}, key=lambda p: int(p) if p.isdigit() else 10**9
+            )
+            item["pages"] = pages
+            results.append(item)
+        results.sort(key=lambda item: (item.get("file", ""), item.get("url", "")))
+        return results
+
+    def _extract_reference_entries(self, tool: ToolEntry, payload: object) -> list[dict[str, str]]:
+        entries: list[dict[str, str]] = []
+
+        def visit(node: object) -> None:
+            if isinstance(node, dict):
+                file_name = node.get("fileName")
+                url = node.get("url")
+                content = node.get("content")
+                if isinstance(file_name, str) and isinstance(url, str):
+                    entries.append(
+                        {
+                            "file": file_name.strip(),
+                            "url": self._build_full_url(tool, url.strip()),
+                            "page": self._extract_page_number(content),
+                        }
+                    )
+                for value in node.values():
+                    visit(value)
+            elif isinstance(node, list):
+                for value in node:
+                    visit(value)
+
+        visit(payload)
+        return entries
+
+    @staticmethod
+    def _build_full_url(tool: ToolEntry, url: str) -> str:
+        if url.startswith("http://") or url.startswith("https://"):
+            return url
+        if not tool.base_url:
+            return url
+        return f"{tool.base_url.rstrip('/')}{url}"
+
+    @staticmethod
+    def _extract_page_number(content: object) -> str:
+        if not isinstance(content, str):
+            return ""
+        match = re.search(r"Page\s+(\d+)", content, re.IGNORECASE)
+        if match:
+            return match.group(1)
+        match = re.search(r"第(\d+)頁", content)
+        if match:
+            return match.group(1)
+        return ""
+
+    def _fetch_validation_payload(self, tool: ToolEntry, chat_id: str, message_id: str) -> dict:
+        if not tool.base_url:
+            return {}
+        try:
+            token = resolve_secret(tool.auth_ref) if tool.auth_ref else None
+            config = HybridRagConfig(
+                base_url=tool.base_url,
+                auth_token=token,
+                timeout_seconds=self.config.runtime.timeout_seconds,
+            )
+            client = HybridRagClient(config)
+            return client.get_validation(chat_id, message_id)
+        except Exception:
+            return {}
 
     def _ensure_profiling(self, profile: Profile, force: bool = False, tool_ids: list[str] | None = None) -> None:
         changed_tool_ids = self._detect_changed_tools()
