@@ -44,6 +44,10 @@ Override their paths with:
 - `REFERENCE_AGENT_TOOLS`
 - `REFERENCE_AGENT_PROFILES`
 
+Port configuration:
+- `runtime.port` in `config.yaml` (default 8080)
+- `REFERENCE_AGENT_PORT` env var overrides the config value
+
 Environment tools (optional):
 - `TOOL_<id>_BASE_URL` + `TOOL_<id>_KEY` + `TOOL_<id>_RAG` (VECTOR/GRAPH/HYBRID/HYBRIDCOT) will be loaded automatically.
   If a profile uses `enabled_tools: ["*"]` and env tools exist, only env tools are enabled.
@@ -60,6 +64,7 @@ docker build -t reference-agent .
 docker run -p 8080:8080 \
   -e OPENAI_API_KEY=... \
   -e HYBRIDRAG_API_TOKEN=... \
+  -e REFERENCE_AGENT_PORT=8080 \
   reference-agent
 ```
 

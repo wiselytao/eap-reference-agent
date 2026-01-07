@@ -28,6 +28,7 @@ runtime:
   streaming_default: false
   timeout_seconds: 300
   concurrency: 4
+  port: 8080
 
 audit:
   trace_dir: "data/traces"

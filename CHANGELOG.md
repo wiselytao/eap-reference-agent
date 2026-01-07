@@ -2,7 +2,17 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
-## v3.0
+## v2.12
+
+### Added
+- README notes for configurable runtime port.
+
+## v2.11
+
+### Added
+- Configurable runtime port via `runtime.port` and `REFERENCE_AGENT_PORT`.
+
+## v2.10
 
 ### Changed
 - References now render as a markdown section with list entries.

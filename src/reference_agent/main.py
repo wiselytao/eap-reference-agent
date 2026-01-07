@@ -8,7 +8,7 @@ if __name__ == "__main__":
 
     service = build_service()
     tls = service.config.tls
-    kwargs = {"host": "0.0.0.0", "port": 8080}
+    kwargs = {"host": "0.0.0.0", "port": service.config.runtime.port}
     if tls.enabled:
         if not tls.certfile or not tls.keyfile:
             raise ValueError("TLS enabled but certfile/keyfile not configured.")

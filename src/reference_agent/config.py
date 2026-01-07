@@ -37,6 +37,7 @@ class RuntimeConfig(BaseModel):
     streaming_default: bool = False
     timeout_seconds: int = 60
     concurrency: int = 4
+    port: int = 8080
 
 
 class AuditConfig(BaseModel):
@@ -82,6 +83,14 @@ def load_yaml(path: Path) -> Dict[str, Any]:
 
 def load_config(path: Path) -> AppConfig:
     data = load_yaml(path)
+    runtime = data.get("runtime", {})
+    env_port = os.getenv("REFERENCE_AGENT_PORT")
+    if env_port:
+        try:
+            runtime["port"] = int(env_port)
+        except ValueError as exc:
+            raise ValueError("Invalid REFERENCE_AGENT_PORT; must be an integer.") from exc
+    data["runtime"] = runtime
     security = data.get("security", {})
     if "bearer_token_active" not in security:
         env_active = os.getenv("REFERENCE_AGENT_BEARER_TOKEN")
