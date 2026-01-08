@@ -2,6 +2,31 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v2.22
+
+### Fixed
+- Streaming requests no longer precompute synchronous answers before emitting SSE.
+
+## v2.21
+
+### Added
+- Extra timing log for stream response readiness.
+
+## v2.20
+
+### Changed
+- Stream timing diagnostics now log via Uvicorn error logger.
+
+## v2.19
+
+### Added
+- Streaming diagnostics logs for first chunk timing.
+
+## v2.18
+
+### Changed
+- Initialize status now emits earlier with timing metadata.
+
 ## v2.17
 
 ### Changed

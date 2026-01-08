@@ -4,3 +4,4 @@ data/
 .DS_Store
 AGENTS.md
 __pycache__/
+*.pdf

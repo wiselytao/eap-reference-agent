@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import json
+import logging
 from pathlib import Path
 import time
 import uuid
@@ -25,6 +26,7 @@ def build_service() -> ReferenceAgentService:
 def create_app() -> FastAPI:
     app = FastAPI(title="Reference Agent", version="1.0")
     service = build_service()
+    logger = logging.getLogger("uvicorn.error")
 
     @app.middleware("http")
     async def bearer_auth(request: Request, call_next):
@@ -103,10 +105,17 @@ def create_app() -> FastAPI:
         yield f"data: {json.dumps(tail)}\n\n".encode("utf-8")
         yield b"data: [DONE]\n\n"
 
-    def _openai_stream_with_status(answer_stream: Iterable[dict], model: str | None) -> Iterable[bytes]:
+    def _openai_stream_with_status(
+        answer_stream: Iterable[dict],
+        model: str | None,
+        init_event: dict,
+        request_start: float,
+    ) -> Iterable[bytes]:
         stream_id = f"chatcmpl-{uuid.uuid4().hex}"
         created = int(time.time())
         current_phase: str | None = None
+        initialize_sent = False
+        first_chunk_sent = False
         header = {
             "id": stream_id,
             "object": "chat.completion.chunk",
@@ -115,8 +124,26 @@ def create_app() -> FastAPI:
             "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
         }
         yield f"data: {json.dumps(header)}\n\n".encode("utf-8")
+        if init_event:
+            init_content, current_phase = _format_status_event(init_event, current_phase)
+            if init_content:
+                initialize_sent = True
+                if not first_chunk_sent:
+                    first_chunk_sent = True
+                    elapsed_ms = int((time.perf_counter() - request_start) * 1000)
+                    logger.info("stream_first_chunk_ms=%s", elapsed_ms)
+                body = {
+                    "id": stream_id,
+                    "object": "chat.completion.chunk",
+                    "created": created,
+                    "model": model or "reference-agent",
+                    "choices": [{"index": 0, "delta": {"content": init_content}, "finish_reason": None}],
+                }
+                yield f"data: {json.dumps(body)}\n\n".encode("utf-8")
         for event in answer_stream:
             event_type = event.get("type")
+            if event_type == "initialize" and initialize_sent:
+                continue
             if event_type == "final":
                 content = event.get("answer", "")
             elif event_type == "error":
@@ -127,6 +154,10 @@ def create_app() -> FastAPI:
                 content, current_phase = _format_status_event(event, current_phase)
             if not content:
                 continue
+            if not first_chunk_sent:
+                first_chunk_sent = True
+                elapsed_ms = int((time.perf_counter() - request_start) * 1000)
+                logger.info("stream_first_chunk_ms=%s", elapsed_ms)
             body = {
                 "id": stream_id,
                 "object": "chat.completion.chunk",
@@ -155,7 +186,9 @@ def create_app() -> FastAPI:
                 if current_phase:
                     prefix += "</think>\n"
                 prefix += "<think>\n"
-            return f"{prefix}- ⏳ initializing\n", next_phase
+            ts_ms = event.get("ts_ms")
+            suffix = f" (t+{ts_ms}ms)" if isinstance(ts_ms, int) else ""
+            return f"{prefix}- ⏳ initializing{suffix}\n", next_phase
         if event_type == "plan_started":
             next_phase = "plan"
             if current_phase != next_phase:
@@ -270,6 +303,8 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/chat/completions")
     async def openai_chat(request: Request):
+        start_ts = time.perf_counter()
+        logger.info("openai_chat_request_start")
         try:
             payload = await request.json()
         except Exception as exc:
@@ -284,14 +319,15 @@ def create_app() -> FastAPI:
         query = _extract_query(messages)
         if not query:
             raise HTTPException(status_code=400, detail="No user message found.")
-        try:
-            response = service.ask(AskRequest(query=query, profile_id="default"))
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
         stream = bool(payload.get("stream"))
         model = payload.get("model")
         if stream:
             if service.config.runtime.stream_status_updates:
+                logger.info(
+                    "openai_chat_stream_response_ready_ms=%s",
+                    int((time.perf_counter() - start_ts) * 1000),
+                )
+                logger.info("openai_chat_stream_status_enabled")
                 return StreamingResponse(
                     _openai_stream_with_status(
                         service.ask_stream(
@@ -303,10 +339,20 @@ def create_app() -> FastAPI:
                             )
                         ),
                         model,
+                        {"type": "initialize", "ts_ms": int((time.perf_counter() - start_ts) * 1000)},
+                        start_ts,
                     ),
                     media_type="text/event-stream",
                 )
+            try:
+                response = service.ask(AskRequest(query=query, profile_id="default"))
+            except Exception as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
             return StreamingResponse(_openai_stream(response.answer, model), media_type="text/event-stream")
+        try:
+            response = service.ask(AskRequest(query=query, profile_id="default"))
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         return _openai_response(response.answer, model)
 
     return app

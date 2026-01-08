@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 import uuid
 from pathlib import Path
 import asyncio
@@ -88,6 +89,7 @@ class ReferenceAgentService:
     def ask_stream(self, request: AskRequest) -> Iterable[dict]:
         queue: Queue[object] = Queue()
         done = object()
+        start = time.perf_counter()
 
         def emit(event: dict) -> None:
             queue.put(event)
@@ -110,7 +112,7 @@ class ReferenceAgentService:
                 queue.put(done)
 
         Thread(target=run, daemon=True).start()
-        queue.put({"type": "initialize"})
+        queue.put({"type": "initialize", "ts_ms": int((time.perf_counter() - start) * 1000)})
 
         def stream() -> Iterable[dict]:
             while True:
