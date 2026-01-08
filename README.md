@@ -51,6 +51,8 @@ Port configuration:
 - Streaming status updates in `/v1/chat/completions`:
   - `runtime.stream_status_updates: true`
   - `REFERENCE_AGENT_STREAM_STATUS_UPDATES=true`
+Trace configuration:
+- `audit.enabled: true|false` to enable/disable trace file output
 
 Environment tools (optional):
 - `TOOL_<id>_BASE_URL` + `TOOL_<id>_KEY` + `TOOL_<id>_RAG` (VECTOR/GRAPH/HYBRID/HYBRIDCOT) will be loaded automatically.

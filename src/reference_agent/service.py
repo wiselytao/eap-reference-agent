@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
 import time
-import uuid
 from pathlib import Path
 import asyncio
 from queue import Queue
@@ -36,6 +36,25 @@ from reference_agent.router import Router
 from reference_agent.secrets import resolve_secret
 from reference_agent.storage import FileTraceStore
 from reference_agent.templates import get_template
+
+_ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+
+def _generate_trace_id() -> str:
+    timestamp_ms = int(time.time() * 1000)
+    if timestamp_ms >= 1 << 48:
+        timestamp_ms = (1 << 48) - 1
+    random_bytes = os.urandom(10)
+    value = (timestamp_ms << 80) | int.from_bytes(random_bytes, "big")
+    return _encode_crockford_base32(value, 26)
+
+
+def _encode_crockford_base32(value: int, length: int) -> str:
+    chars = []
+    for _ in range(length):
+        chars.append(_ULID_ALPHABET[value & 0x1F])
+        value >>= 5
+    return "".join(reversed(chars))
 
 
 class ReferenceAgentService:
@@ -183,7 +202,7 @@ class ReferenceAgentService:
             answer = f"{answer.rstrip()}\n\n{reference_section}"
 
         trace = Trace(
-            trace_id=str(uuid.uuid4()),
+            trace_id=_generate_trace_id(),
             profile_id=profile.profile_id,
             profile_version=profile.version,
             router=router_output,
@@ -199,7 +218,8 @@ class ReferenceAgentService:
             final_status_reasons=final_status_reasons,
             user_visible_notes=[],
         )
-        self.trace_store.save(trace)
+        if self.config.audit.enabled:
+            self.trace_store.save(trace)
         self._update_health(result.steps)
         return AskResponse(
             answer=answer,

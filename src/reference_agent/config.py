@@ -44,6 +44,7 @@ class RuntimeConfig(BaseModel):
 class AuditConfig(BaseModel):
     trace_dir: str = "data/traces"
     retention_days: Optional[int] = None
+    enabled: bool = True
 
 
 class SecurityConfig(BaseModel):

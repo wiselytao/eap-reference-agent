@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v2.24
+
+### Added
+- Configurable audit tracing via `audit.enabled`.
+
+## v2.23
+
+### Changed
+- Trace IDs now use ULID for shorter, time-sortable filenames.
+
 ## v2.22
 
 ### Fixed

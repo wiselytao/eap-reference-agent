@@ -34,6 +34,7 @@ runtime:
 audit:
   trace_dir: "data/traces"
   retention_days: 30
+  enabled: true
 
 security:
   allowed_profiles:
