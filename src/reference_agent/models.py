@@ -204,6 +204,7 @@ class PlanSkeleton(BaseModel):
     constraints: Dict[str, Any] = Field(default_factory=dict)
     stop_conditions: List[str] = Field(default_factory=list)
     notes: Optional[str] = None
+    tool_selection_notes: List[str] = Field(default_factory=list)
 
 
 class PlanStep(BaseModel):

@@ -39,6 +39,8 @@ Configuration files:
 - `config.yaml`
 - `tools/TOOLS.md`
 - `profiles/default.yaml`
+See `doc/tools_md_example_v1.en.md` for an annotated `TOOLS.md` example.
+See `doc/tools_md_example_v1.zh_tw.md` for a Traditional Chinese example.
 
 Override their paths with:
 - `REFERENCE_AGENT_CONFIG`

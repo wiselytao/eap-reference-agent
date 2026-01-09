@@ -162,8 +162,11 @@ class ReferenceAgentService:
             event_handler,
             {
                 "type": "plan_completed",
-                "strategy_id": router_output.strategy_id,
-                "selected_tools": [tool.get("tool_id") for tool in router_output.selected_tools],
+                "candidate_tools": plan_skeleton.candidate_tools,
+                "tool_selection_notes": plan_skeleton.tool_selection_notes,
+                "required_fields": plan_skeleton.required_fields,
+                "stop_conditions": plan_skeleton.stop_conditions,
+                "constraints": plan_skeleton.constraints,
             },
         )
         result = self.bounded_executor.execute(
@@ -286,6 +289,25 @@ class ReferenceAgentService:
     def _emit(handler: Callable[[dict], None] | None, payload: dict) -> None:
         if handler:
             handler(payload)
+
+    def _build_tool_reason_snapshot(self, selected_tools: list[dict[str, object]]) -> list[dict[str, object]]:
+        reasons = []
+        for tool_entry in selected_tools:
+            tool_id = tool_entry.get("tool_id")
+            if not tool_id:
+                continue
+            tool = self.tools.get(str(tool_id))
+            health = self.tool_health.get(str(tool_id))
+            reasons.append(
+                {
+                    "tool_id": tool_id,
+                    "healthy": health.healthy if health else None,
+                    "failure_count": health.failure_count if health else None,
+                    "summary": (tool.profile_summary or tool.summary) if tool else None,
+                    "pipeline_prefix": tool.pipeline_prefix if tool else None,
+                }
+            )
+        return reasons
 
     @staticmethod
     def _group_tools_by_step(steps: list[StepRecord]) -> list[list[str]]:

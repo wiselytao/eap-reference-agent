@@ -197,11 +197,24 @@ def create_app() -> FastAPI:
                 prefix += "<think>\n"
             return f"{prefix}- ⏳ planning started\n", next_phase
         if event_type == "plan_completed":
-            tools = ", ".join(event.get("selected_tools") or [])
-            return (
-                f"- ⏳ planning completed (strategy: {event.get('strategy_id')}, tools: {tools})\n</think>\n",
-                None,
-            )
+            lines = ["- ✅ planning completed"]
+            candidate_tools = event.get("candidate_tools") or []
+            if candidate_tools:
+                lines.append(f"  - candidate tools: {', '.join(candidate_tools)}")
+            selection_notes = event.get("tool_selection_notes") or []
+            if selection_notes:
+                for note in selection_notes:
+                    lines.append(f"  - note: {note}")
+            required_fields = event.get("required_fields") or []
+            if required_fields:
+                lines.append(f"  - required fields: {', '.join(required_fields)}")
+            stop_conditions = event.get("stop_conditions") or []
+            if stop_conditions:
+                lines.append(f"  - stop conditions: {', '.join(stop_conditions)}")
+            constraints = event.get("constraints") or {}
+            if constraints:
+                lines.append(f"  - constraints: {json.dumps(constraints)}")
+            return "\n".join(lines) + "\n</think>\n", None
         if event_type == "step_started":
             step = event.get("step_index")
             tools = ", ".join(event.get("tool_ids") or [])
@@ -210,7 +223,30 @@ def create_app() -> FastAPI:
                 if current_phase:
                     prefix += "</think>\n"
                 prefix += "<think>\n"
-            return f"{prefix}- ⏳ step {step} started (tools: {tools})\n", next_phase
+            lines = [f"{prefix}- ⏳ step {step} started"]
+            if tools:
+                lines.append(f"  - tools: {tools}")
+            selection_rationale = event.get("selection_rationale") or []
+            if selection_rationale:
+                lines.append(f"  - rationale: {', '.join(selection_rationale)}")
+            selection_notes = event.get("selection_notes")
+            if selection_notes:
+                lines.append(f"  - notes: {selection_notes}")
+            relevance_details = event.get("relevance_details") or []
+            if relevance_details:
+                for detail in relevance_details:
+                    tool_id = detail.get("tool_id")
+                    relevance = detail.get("relevance")
+                    reason = detail.get("reason")
+                    line = f"  - relevance: {tool_id} = {relevance}"
+                    if reason:
+                        line = f"{line} ({reason})"
+                    lines.append(line)
+            questions = event.get("questions") or []
+            if questions:
+                for idx, question in enumerate(questions, start=1):
+                    lines.append(f"  - q{idx}: {question}")
+            return "\n".join(lines) + "\n", next_phase
         if event_type == "tool_started":
             step = event.get("step_index")
             tool = event.get("tool_id")
@@ -224,7 +260,10 @@ def create_app() -> FastAPI:
             err = event.get("error_code")
             status = "error" if err else "ok"
             suffix = f" ({duration}ms)" if duration is not None else ""
-            return f"- ⏳ step {step} tool completed: {tool} {status}{suffix}\n", next_phase
+            line = f"- ⏳ step {step} tool completed: {tool} {status}{suffix}"
+            if err:
+                line = f"{line} — error: {err}"
+            return f"{line}\n", next_phase
         if event_type == "step_completed":
             step = event.get("step_index")
             return f"- ⏳ step {step} completed\n</think>\n", None

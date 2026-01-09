@@ -24,6 +24,7 @@ class PlanSkeletonBuilder:
             "evidence_max": profile.limits.evidence_max,
         }
         allowed_fields = self._allowed_fields(candidates, tools)
+        tool_selection_notes = self._tool_selection_notes(candidates, tools)
         if self._llm and self._model:
             prompt = self._prompt(query, candidates, tools, constraints, allowed_fields)
             try:
@@ -34,10 +35,12 @@ class PlanSkeletonBuilder:
                         parsed.required_fields = [
                             item for item in parsed.required_fields if item in allowed_fields
                         ]
+                    if tool_selection_notes:
+                        parsed.tool_selection_notes = tool_selection_notes
                     return parsed
             except Exception:
                 pass
-        return self._fallback(query, candidates, constraints)
+        return self._fallback(query, candidates, constraints, tool_selection_notes)
 
     def _prompt(
         self,
@@ -53,7 +56,8 @@ class PlanSkeletonBuilder:
             summary = ""
             if tool:
                 summary = tool.profile_summary or tool.summary or ""
-            tool_lines.append(f"- {tool_id} ({tool.pipeline_prefix or 'UNKNOWN'}): {summary}")
+            prefix = tool.pipeline_prefix if tool else "UNKNOWN"
+            tool_lines.append(f"- {tool_id} ({prefix}): {summary}")
         allowed_note = (
             f"required_fields must be chosen from this list only: {allowed_fields}\n\n"
             if allowed_fields
@@ -63,7 +67,7 @@ class PlanSkeletonBuilder:
             "You are building a Plan Skeleton for a bounded RAG planner. "
             "Return strict JSON with keys: answer_blueprint (list of strings), "
             "required_fields (list of strings), candidate_tools (list of strings), "
-            "constraints (object), stop_conditions (list of strings).\n\n"
+            "constraints (object), stop_conditions (list of strings), tool_selection_notes (list of strings).\n\n"
             f"{allowed_note}"
             f"Query: {query}\n\n"
             f"Candidate tools:\n{chr(10).join(tool_lines)}\n\n"
@@ -78,18 +82,21 @@ class PlanSkeletonBuilder:
         if not isinstance(data, dict):
             return None
         try:
-            return PlanSkeleton(
-                answer_blueprint=data.get("answer_blueprint", []),
-                required_fields=data.get("required_fields", data.get("required_bindings", [])),
-                candidate_tools=data.get("candidate_tools", []),
-                constraints=data.get("constraints", {}),
-                stop_conditions=data.get("stop_conditions", []),
-                notes=data.get("notes"),
-            )
+                return PlanSkeleton(
+                    answer_blueprint=data.get("answer_blueprint", []),
+                    required_fields=data.get("required_fields", data.get("required_bindings", [])),
+                    candidate_tools=data.get("candidate_tools", []),
+                    constraints=data.get("constraints", {}),
+                    stop_conditions=data.get("stop_conditions", []),
+                    notes=data.get("notes"),
+                    tool_selection_notes=data.get("tool_selection_notes", []),
+                )
         except Exception:
             return None
 
-    def _fallback(self, query: str, candidates: List[str], constraints: Dict[str, int]) -> PlanSkeleton:
+    def _fallback(
+        self, query: str, candidates: List[str], constraints: Dict[str, int], tool_notes: List[str]
+    ) -> PlanSkeleton:
         return PlanSkeleton(
             answer_blueprint=["Answer the user query with verifiable evidence."],
             required_fields=[],
@@ -97,6 +104,7 @@ class PlanSkeletonBuilder:
             constraints=constraints,
             stop_conditions=["evidence_min_met", "step_budget_exhausted"],
             notes="Fallback plan skeleton.",
+            tool_selection_notes=tool_notes,
         )
 
     def _allowed_fields(self, candidates: List[str], tools: Dict[str, ToolEntry]) -> List[str]:
@@ -113,3 +121,18 @@ class PlanSkeletonBuilder:
         if len(schema_fields) >= 3:
             return sorted(set(schema_fields))
         return []
+
+    @staticmethod
+    def _tool_selection_notes(candidates: List[str], tools: Dict[str, ToolEntry]) -> List[str]:
+        notes = []
+        for tool_id in candidates:
+            tool = tools.get(tool_id)
+            if not tool:
+                continue
+            summary = tool.profile_summary or tool.summary or ""
+            prefix = tool.pipeline_prefix or "UNKNOWN"
+            if summary:
+                notes.append(f"{tool_id} ({prefix}): {summary}")
+            else:
+                notes.append(f"{tool_id} ({prefix}): no summary available")
+        return notes

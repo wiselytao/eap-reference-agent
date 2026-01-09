@@ -2,15 +2,50 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v2.31
+
+### Changed
+- Added capability value descriptions to `TOOLS.md` example docs.
+
+## v2.30
+
+### Changed
+- Expanded `TOOLS.md` example docs with evidence field guidance and capabilities list.
+
+## v2.29
+
+### Added
+- Traditional Chinese `TOOLS.md` example in `doc/tools_md_example_v1.zh_tw.md`.
+
+## v2.28
+
+### Added
+- Annotated `TOOLS.md` example in `doc/tools_md_example_v1.en.md`.
+
+## v2.26
+
+### Changed
+- `<think>` output now focuses on dynamic planning/tool relevance decisions.
+
 ## v2.24
 
 ### Added
 - Configurable audit tracing via `audit.enabled`.
 
+## v2.24
+
+### Changed
+- `<think>` planning output now includes per-tool selection reasons.
+
 ## v2.23
 
 ### Changed
 - Trace IDs now use ULID for shorter, time-sortable filenames.
+
+## v2.23
+
+### Changed
+- Streaming `<think>` status now includes planning rationale and step questions.
 
 ## v2.22
 

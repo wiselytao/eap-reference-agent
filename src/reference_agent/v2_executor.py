@@ -63,7 +63,15 @@ class BoundedExecutor:
         if not external_tool or not local_tool:
             return ExecutionResult("", [], [], "FAILED")
 
-        self._emit(event_handler, {"type": "step_started", "step_index": 1, "tool_ids": [external_tool.tool_id, local_tool.tool_id]})
+        self._emit(
+            event_handler,
+            {
+                "type": "step_started",
+                "step_index": 1,
+                "tool_ids": [external_tool.tool_id, local_tool.tool_id],
+                "questions": [query],
+            },
+        )
         with ThreadPoolExecutor(max_workers=2) as pool:
             self._emit(event_handler, {"type": "tool_started", "step_index": 1, "tool_id": external_tool.tool_id})
             self._emit(event_handler, {"type": "tool_started", "step_index": 1, "tool_id": local_tool.tool_id})
@@ -131,7 +139,12 @@ class BoundedExecutor:
 
         for step_index in range(1, profile.limits.max_steps + 1):
             if step_index == 1:
-                step_tool_ids, selection_rationale, selection_notes = self._filter_relevant_tools(
+                (
+                    step_tool_ids,
+                    selection_rationale,
+                    selection_notes,
+                    relevance_details,
+                ) = self._filter_relevant_tools(
                     query,
                     tools,
                     candidate_tool_ids,
@@ -144,6 +157,7 @@ class BoundedExecutor:
                     used_tool_ids,
                 )
                 selection_notes = None
+                relevance_details = None
             if not step_tool_ids:
                 if step_index == 1:
                     step_plans.append(
@@ -179,6 +193,10 @@ class BoundedExecutor:
                     "step_index": step_index,
                     "tool_ids": step_tool_ids,
                     "question_count": len(questions),
+                    "questions": questions,
+                    "selection_rationale": selection_rationale,
+                    "selection_notes": selection_notes,
+                    "relevance_details": relevance_details,
                 },
             )
             max_workers = min(12, len(step_tool_ids) * len(questions)) or 1
@@ -326,7 +344,12 @@ class BoundedExecutor:
                 return ExecutionResult("", evidence, step_records, "FAILED")
             self._emit(
                 event_handler,
-                {"type": "step_started", "step_index": idx, "tool_ids": [tool.tool_id]},
+                {
+                    "type": "step_started",
+                    "step_index": idx,
+                    "tool_ids": [tool.tool_id],
+                    "questions": [current_query],
+                },
             )
             self._emit(event_handler, {"type": "tool_started", "step_index": idx, "tool_id": tool.tool_id})
             answer, step_evidence, step_record = self._executor.call_tool(tool, current_query)
@@ -452,9 +475,9 @@ class BoundedExecutor:
         query: str,
         tools: Dict[str, ToolEntry],
         candidate_tool_ids: List[str],
-    ) -> tuple[List[str], List[str], str | None]:
+    ) -> tuple[List[str], List[str], str | None, list[dict[str, str]] | None]:
         if not self._llm or not self._model:
-            return candidate_tool_ids, ["R_STEP1_RELEVANCE_FALLBACK"], None
+            return candidate_tool_ids, ["R_STEP1_RELEVANCE_FALLBACK"], None, None
 
         def assess(tool_id: str) -> tuple[str, str, str]:
             tool = tools.get(tool_id)
@@ -490,14 +513,18 @@ class BoundedExecutor:
         relevant_tools = [
             tool_id for tool_id, relevance, _ in results if relevance in {"relevant", "uncertain"}
         ]
+        relevance_details = [
+            {"tool_id": tool_id, "relevance": relevance, "reason": reason}
+            for tool_id, relevance, reason in results
+        ]
         notes = "; ".join(
             f"{tool_id}: {relevance}"
             + (f" ({reason})" if reason else "")
             for tool_id, relevance, reason in results
         )
         if not relevant_tools:
-            return [], ["R_STEP1_RELEVANCE_EMPTY_STOP"], notes
-        return relevant_tools, ["R_STEP1_LLM_RELEVANCE_SOFT"], notes
+            return [], ["R_STEP1_RELEVANCE_EMPTY_STOP"], notes, relevance_details
+        return relevant_tools, ["R_STEP1_LLM_RELEVANCE_SOFT"], notes, relevance_details
 
     def _select_gap_tools(
         self,
