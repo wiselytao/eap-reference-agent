@@ -201,10 +201,6 @@ def create_app() -> FastAPI:
             candidate_tools = event.get("candidate_tools") or []
             if candidate_tools:
                 lines.append(f"  - candidate tools: {', '.join(candidate_tools)}")
-            selection_notes = event.get("tool_selection_notes") or []
-            if selection_notes:
-                for note in selection_notes:
-                    lines.append(f"  - note: {note}")
             required_fields = event.get("required_fields") or []
             if required_fields:
                 lines.append(f"  - required fields: {', '.join(required_fields)}")
