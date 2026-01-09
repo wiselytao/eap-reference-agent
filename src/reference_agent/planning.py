@@ -5,6 +5,7 @@ from typing import Dict, List
 
 from reference_agent.adapters.llm import LLMClient, LLMRequest
 from reference_agent.models import PlanSkeleton, Profile, ToolEntry
+from reference_agent.tool_routing import prefix_for_tool
 from reference_agent.profiling import ProfilingStore
 
 
@@ -56,7 +57,7 @@ class PlanSkeletonBuilder:
             summary = ""
             if tool:
                 summary = tool.profile_summary or tool.summary or ""
-            prefix = tool.pipeline_prefix if tool else "UNKNOWN"
+            prefix = prefix_for_tool(tool) if tool else "UNKNOWN"
             tool_lines.append(f"- {tool_id} ({prefix}): {summary}")
         allowed_note = (
             f"required_fields must be chosen from this list only: {allowed_fields}\n\n"
@@ -113,7 +114,8 @@ class PlanSkeletonBuilder:
             tool = tools.get(tool_id)
             if not tool:
                 continue
-            if tool.pipeline_prefix in {"GRAPH:", "SQL:"}:
+            prefix = prefix_for_tool(tool)
+            if prefix in {"GRAPH:", "SQL:"}:
                 if self._profiling_store:
                     record = self._profiling_store.load_latest(tool_id)
                     if record and record.schema:
@@ -130,7 +132,7 @@ class PlanSkeletonBuilder:
             if not tool:
                 continue
             summary = tool.profile_summary or tool.summary or ""
-            prefix = tool.pipeline_prefix or "UNKNOWN"
+            prefix = prefix_for_tool(tool) or "UNKNOWN"
             if summary:
                 notes.append(f"{tool_id} ({prefix}): {summary}")
             else:

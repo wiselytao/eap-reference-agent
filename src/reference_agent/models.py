@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 
 ToolType = Literal["hybridrag_pipeline", "external_mcp"]
-AdapterType = Literal["hybridrag_chat_api_v1", "mcp"]
 EvidenceContract = Literal["REQUIRED", "OPTIONAL", "NONE"]
 EvidenceSourceType = Literal[
     "vector_chunk",
@@ -31,10 +30,8 @@ class ToolEntry(BaseModel):
     tool_id: str
     type: ToolType
     project_id: str
-    adapter: AdapterType
     base_url: Optional[str] = None
     auth_ref: Optional[str] = None
-    pipeline_prefix: Optional[str] = None
     summary: Optional[str] = None
     profile_summary: Optional[str] = None
     capabilities: List[str] = Field(default_factory=list)
@@ -211,7 +208,6 @@ class PlanStep(BaseModel):
     step_id: str
     template: str
     tool_id: Optional[str] = None
-    pipeline_prefix: Optional[str] = None
     input_hint: Optional[str] = None
     bindings_used: List[str] = Field(default_factory=list)
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime
+from threading import Lock
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -18,6 +20,7 @@ from reference_agent.models import (
     ToolHealth,
 )
 from reference_agent.secrets import resolve_secret
+from reference_agent.tool_routing import prefix_for_tool
 from reference_agent import strategies
 
 
@@ -44,6 +47,20 @@ class StrategyExecutor:
         self._tool_health = tool_health
         self._composer = composer
         self._timeout_seconds = timeout_seconds
+        self._chat_cache: Dict[str, str] = {}
+        self._chat_cache_lock = Lock()
+
+    def _chat_title(self) -> str:
+        return f"ReferenceAgent-{datetime.now().strftime('%y%m%d%H%M%S')}"
+
+    def _get_or_create_chat_id(self, tool: ToolEntry, client: HybridRagClient) -> str:
+        with self._chat_cache_lock:
+            cached = self._chat_cache.get(tool.tool_id)
+        if cached:
+            return cached
+        chat_id = client.create_chat(title=self._chat_title())
+        with self._chat_cache_lock:
+            return self._chat_cache.setdefault(tool.tool_id, chat_id)
 
     def execute(self, strategy_id: str, query: str, profile: Profile) -> ExecutionResult:
         if strategy_id in {strategies.STR_V, strategies.STR_FALLBACK_V}:
@@ -61,7 +78,7 @@ class StrategyExecutor:
     def call_tool(self, tool: ToolEntry, query: str) -> Tuple[str, List[Evidence], StepRecord]:
         if tool.type == "external_mcp":
             return self._call_external(tool, query)
-        prefix = tool.pipeline_prefix or ""
+        prefix = prefix_for_tool(tool) or ""
         return self._call_hybrid(tool, prefix, query)
 
     def compose_external(
@@ -92,9 +109,8 @@ class StrategyExecutor:
         evidence: List[Evidence] = []
         local_answer = ""
         external_answer = ""
-        local_answer, local_evidence, local_step = self._call_hybrid(
-            local_tool, local_tool.pipeline_prefix or "", query
-        )
+        prefix = prefix_for_tool(local_tool) or ""
+        local_answer, local_evidence, local_step = self._call_hybrid(local_tool, prefix, query)
         external_answer, external_evidence, external_step = self._call_external(external_tool, query)
         evidence.extend(local_evidence)
         evidence.extend(external_evidence)
@@ -147,7 +163,7 @@ class StrategyExecutor:
     def _select_tool_by_prefix(self, prefix: str, profile: Profile) -> Optional[ToolEntry]:
         for tool_id in profile.enabled_tools:
             tool = self._tools.get(tool_id)
-            if tool and tool.pipeline_prefix == prefix:
+            if tool and prefix_for_tool(tool) == prefix:
                 return tool
         return None
 
@@ -172,7 +188,7 @@ class StrategyExecutor:
                     timeout_seconds=self._timeout_seconds,
                 )
             )
-            chat_id = client.create_chat()
+            chat_id = self._get_or_create_chat_id(tool, client)
             answer, message_id = client.send_message(chat_id, f"{prefix} {query}")
             evidence = [build_hybrid_evidence(tool.tool_id, chat_id, message_id, answer)]
         except Exception as exc:

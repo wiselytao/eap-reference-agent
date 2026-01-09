@@ -11,21 +11,26 @@
 1) `tool_id`: 工具唯一識別碼 (string)。
 2) `type`: 工具類型 (例如 `hybridrag_pipeline`、`external_mcp`)。
 3) `project_id`: 專案或資料集識別。
-4) `adapter`: Runtime 使用的 adapter 名稱。
-5) `base_url`: 工具服務的 API endpoint。
-6) `auth_ref`: 儲存 API 金鑰/Token 的環境變數名稱。
-7) `pipeline_prefix`: 路由前綴 (例如 `VECTOR:`、`GRAPH:`、`HYBRID:`、`HYBRIDCOT:`)。
-8) `summary`: 單行摘要，提供工具挑選依據。
-9) `capabilities`: 能力標籤。
-10) `constraints`: 執行時的限制或提示 (timeout、topK、max_hops 等)。
-11) `evidence_contract`: `REQUIRED` 或 `OPTIONAL`。
-12) `evidence_locator_policy`: 證據定位方式 (`chat_message_ref`、`external_ref`)。
+4) `base_url`: 工具服務的 API endpoint。
+5) `auth_ref`: 儲存 API 金鑰/Token 的環境變數名稱。
+6) `summary`: 單行摘要，提供工具挑選依據。
+7) `capabilities`: 能力標籤。
+8) `constraints`: 執行時的限制或提示 (timeout、topK、max_hops 等)。
+9) `evidence_contract`: `REQUIRED` 或 `OPTIONAL`。
+10) `evidence_locator_policy`: 證據定位方式 (`chat_message_ref`、`external_ref`)。
 
 ## Evidence 欄位說明
 1) `evidence_contract` 控制工具是否必須回傳證據才能視為成功。
 2) `evidence_locator_policy` 決定回應中證據的引用方式。
 3) `chat_message_ref` 用於 Hybrid RAG 類型，會回傳 `chat_id`/`message_id`。
 4) `external_ref` 用於外部 MCP 工具，通常以文件參照為主。
+
+## 路由前綴
+路由前綴由 `capabilities` 推導：
+1) `vector_rag` -> `VECTOR:`
+2) `graph_rag` -> `GRAPH:`
+3) `hybrid_rag` -> `HYBRID:`
+4) `hybrid_cot` -> `HYBRIDCOT:`
 
 ## Capabilities 參考值
 常見值：
@@ -42,10 +47,8 @@ tools:
   - tool_id: "demo.vector"              # 工具 ID
     type: "hybridrag_pipeline"          # 內部 Hybrid RAG pipeline
     project_id: "demo"                  # 專案或資料集識別
-    adapter: "hybridrag_chat_api_v1"    # Reference Agent 使用的 adapter
     base_url: "https://demo.example"    # API base URL
     auth_ref: "HYBRIDRAG_API_TOKEN"     # API token 的環境變數名稱
-    pipeline_prefix: "VECTOR:"          # 路由前綴
     summary: "Demo 向量資料集。"       # 工具摘要
     capabilities: ["vector_rag"]        # 能力標籤
     constraints:
@@ -57,10 +60,8 @@ tools:
   - tool_id: "demo.graph"
     type: "hybridrag_pipeline"
     project_id: "demo"
-    adapter: "hybridrag_chat_api_v1"
     base_url: "https://demo.example"
     auth_ref: "HYBRIDRAG_API_TOKEN"
-    pipeline_prefix: "GRAPH:"
     summary: "Demo 圖譜資料集。"
     capabilities: ["graph_rag"]
     constraints:
@@ -72,10 +73,8 @@ tools:
   - tool_id: "demo.hybrid"
     type: "hybridrag_pipeline"
     project_id: "demo"
-    adapter: "hybridrag_chat_api_v1"
     base_url: "https://demo.example"
     auth_ref: "HYBRIDRAG_API_TOKEN"
-    pipeline_prefix: "HYBRID:"
     summary: "混合資料集，內建 answer generation。"
     capabilities: ["hybrid_rag", "answer_gen_builtin"]
     constraints:
@@ -86,7 +85,6 @@ tools:
   - tool_id: "external.partner"
     type: "external_mcp"
     project_id: "partner"
-    adapter: "mcp"
     base_url: "https://partner.example.com"
     auth_ref: "EXTERNAL_MCP_TOKEN"
     summary: "外部 MCP 來源。"

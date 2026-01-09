@@ -6,6 +6,7 @@ from typing import Callable, Dict, List
 
 from reference_agent.executor import ExecutionResult, StrategyExecutor
 from reference_agent.adapters.llm import LLMClient, LLMRequest
+from reference_agent.tool_routing import prefix_for_tool
 from reference_agent.evaluator import Evaluator
 from reference_agent.synthesis import CrossRagSynthesizer, SynthesisInput
 from reference_agent.models import (
@@ -543,7 +544,7 @@ class BoundedExecutor:
                 if not tool:
                     continue
                 summary = tool.profile_summary or tool.summary or ""
-                tool_lines.append(f"- {tool_id} ({tool.pipeline_prefix or 'UNKNOWN'}): {summary}")
+                tool_lines.append(f"- {tool_id} ({prefix_for_tool(tool) or 'UNKNOWN'}): {summary}")
             prompt = (
                 "Select the tools most likely to fill the missing fields/items. "
                 "Return a JSON array of tool_id strings. If none, return [] only.\n\n"

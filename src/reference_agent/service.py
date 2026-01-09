@@ -34,6 +34,7 @@ from reference_agent.v2_executor import BoundedExecutor
 from reference_agent.v2_planner import BoundedPlanner
 from reference_agent.router import Router
 from reference_agent.secrets import resolve_secret
+from reference_agent.tool_routing import prefix_for_tool
 from reference_agent.storage import FileTraceStore
 from reference_agent.templates import get_template
 
@@ -304,7 +305,7 @@ class ReferenceAgentService:
                     "healthy": health.healthy if health else None,
                     "failure_count": health.failure_count if health else None,
                     "summary": (tool.profile_summary or tool.summary) if tool else None,
-                    "pipeline_prefix": tool.pipeline_prefix if tool else None,
+                    "pipeline_prefix": prefix_for_tool(tool) if tool else None,
                 }
             )
         return reasons
@@ -349,7 +350,7 @@ class ReferenceAgentService:
         for item in evidence:
             tool = self.tools.get(item.tool_id)
             locator = item.locator
-            if not tool or tool.adapter != "hybridrag_chat_api_v1":
+            if not tool or tool.type != "hybridrag_pipeline":
                 continue
             if not locator or not locator.chat_id or not locator.messageId:
                 continue

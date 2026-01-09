@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 
 from reference_agent.adapters.llm import LLMClient, LLMRequest, build_intent_prompt, parse_intent_response
 from reference_agent.models import Profile, RouterBindingReadiness, RouterOutput, ToolEntry, ToolHealth
+from reference_agent.tool_routing import prefix_for_tool
 from reference_agent import strategies
 
 
@@ -160,7 +161,7 @@ class Router:
         candidates = [
             tool_id
             for tool_id in profile.enabled_tools
-            if tool_id in tools and tools[tool_id].pipeline_prefix == prefix
+            if tool_id in tools and prefix_for_tool(tools[tool_id]) == prefix
         ]
         return sorted(
             candidates,
@@ -196,7 +197,7 @@ class Router:
                 {
                     "tool_id": tool.tool_id,
                     "type": tool.type,
-                    "pipeline_prefix": tool.pipeline_prefix,
+                    "pipeline_prefix": prefix_for_tool(tool),
                 }
             )
         return selected

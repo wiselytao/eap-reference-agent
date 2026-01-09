@@ -28,9 +28,12 @@ class HybridRagClient:
             headers["Authorization"] = f"Bearer {self._auth_token}"
         return headers
 
-    def create_chat(self) -> str:
+    def create_chat(self, title: Optional[str] = None) -> str:
         url = f"{self._base_url}/api/v1/chat/create"
-        response = httpx.post(url, headers=self._headers(), json={}, timeout=self._timeout)
+        payload = {}
+        if title:
+            payload["title"] = title
+        response = httpx.post(url, headers=self._headers(), json=payload, timeout=self._timeout)
         response.raise_for_status()
         payload = response.json()
         return payload.get("data", {}).get("insertedId") or payload.get("insertedId")

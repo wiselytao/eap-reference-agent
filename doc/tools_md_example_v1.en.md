@@ -11,21 +11,26 @@ This document provides an annotated example for `tools/TOOLS.md`.
 1) `tool_id`: Unique ID used in profiles and traces (string).
 2) `type`: Tool driver type (for example, `hybridrag_pipeline` or `external_mcp`).
 3) `project_id`: Project or dataset identifier for the tool.
-4) `adapter`: Adapter name used by the runtime.
-5) `base_url`: Service endpoint for the tool.
-6) `auth_ref`: Environment variable name that stores the API key or token.
-7) `pipeline_prefix`: Routing prefix (ex: `VECTOR:`, `GRAPH:`, `HYBRID:`, `HYBRIDCOT:`).
-8) `summary`: One-line description; used for tool selection relevance.
-9) `capabilities`: Tags for what the tool can do.
-10) `constraints`: Runtime hints (timeout class, topK, max_hops, etc).
-11) `evidence_contract`: `REQUIRED` or `OPTIONAL`.
-12) `evidence_locator_policy`: Evidence locator style (`chat_message_ref`, `external_ref`).
+4) `base_url`: Service endpoint for the tool.
+5) `auth_ref`: Environment variable name that stores the API key or token.
+6) `summary`: One-line description; used for tool selection relevance.
+7) `capabilities`: Tags for what the tool can do.
+8) `constraints`: Runtime hints (timeout class, topK, max_hops, etc).
+9) `evidence_contract`: `REQUIRED` or `OPTIONAL`.
+10) `evidence_locator_policy`: Evidence locator style (`chat_message_ref`, `external_ref`).
 
 ## Evidence Fields
 1) `evidence_contract` controls whether evidence must be returned for the tool to be considered successful.
 2) `evidence_locator_policy` sets how evidence is referenced in the response payload.
 3) `chat_message_ref` is used for Hybrid RAG pipelines that return `chat_id`/`message_id`.
 4) `external_ref` is used for external MCP tools that return document references.
+
+## Routing Prefix
+Routing prefixes are derived from `capabilities`:
+1) `vector_rag` -> `VECTOR:`
+2) `graph_rag` -> `GRAPH:`
+3) `hybrid_rag` -> `HYBRID:`
+4) `hybrid_cot` -> `HYBRIDCOT:`
 
 ## Capabilities Reference
 Common values:
@@ -42,10 +47,8 @@ tools:
   - tool_id: "demo.vector"              # Unique tool ID
     type: "hybridrag_pipeline"          # Internal hybrid RAG pipeline
     project_id: "demo"                  # Dataset or project identifier
-    adapter: "hybridrag_chat_api_v1"    # Adapter used by Reference Agent
     base_url: "https://demo.example"    # API base URL
     auth_ref: "HYBRIDRAG_API_TOKEN"     # Env var that holds the API token
-    pipeline_prefix: "VECTOR:"          # Router prefix
     summary: "Demo vector dataset."     # Short description for selection
     capabilities: ["vector_rag"]        # Capability tags
     constraints:
@@ -57,10 +60,8 @@ tools:
   - tool_id: "demo.graph"
     type: "hybridrag_pipeline"
     project_id: "demo"
-    adapter: "hybridrag_chat_api_v1"
     base_url: "https://demo.example"
     auth_ref: "HYBRIDRAG_API_TOKEN"
-    pipeline_prefix: "GRAPH:"
     summary: "Demo graph dataset."
     capabilities: ["graph_rag"]
     constraints:
@@ -72,10 +73,8 @@ tools:
   - tool_id: "demo.hybrid"
     type: "hybridrag_pipeline"
     project_id: "demo"
-    adapter: "hybridrag_chat_api_v1"
     base_url: "https://demo.example"
     auth_ref: "HYBRIDRAG_API_TOKEN"
-    pipeline_prefix: "HYBRID:"
     summary: "Hybrid dataset with built-in answer generation."
     capabilities: ["hybrid_rag", "answer_gen_builtin"]
     constraints:
@@ -86,7 +85,6 @@ tools:
   - tool_id: "external.partner"
     type: "external_mcp"
     project_id: "partner"
-    adapter: "mcp"
     base_url: "https://partner.example.com"
     auth_ref: "EXTERNAL_MCP_TOKEN"
     summary: "External partner MCP source."

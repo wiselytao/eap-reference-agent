@@ -9,6 +9,7 @@ import yaml
 from pydantic import BaseModel, Field
 
 from reference_agent.models import ToolEntry, Profile
+from reference_agent.tool_routing import capability_for_rag_type
 
 
 class LLMComponentConfig(BaseModel):
@@ -135,8 +136,8 @@ def load_tools_from_env() -> List[ToolEntry]:
         if not base_url or not rag_type:
             continue
         rag_type = rag_type.strip().upper()
-        prefix = _rag_to_prefix(rag_type)
-        if not prefix:
+        capability = capability_for_rag_type(rag_type)
+        if not capability:
             continue
         tool_id = f"rag{idx}.{rag_type.lower()}"
         tools.append(
@@ -144,11 +145,9 @@ def load_tools_from_env() -> List[ToolEntry]:
                 tool_id=tool_id,
                 type="hybridrag_pipeline",
                 project_id=f"rag{idx}",
-                adapter="hybridrag_chat_api_v1",
                 base_url=base_url,
                 auth_ref=f"TOOL_{idx}_KEY",
-                pipeline_prefix=prefix,
-                capabilities=[rag_type.lower()],
+                capabilities=[capability],
                 evidence_contract="REQUIRED" if rag_type in {"HYBRID", "HYBRIDCOT"} else "OPTIONAL",
                 evidence_locator_policy="chat_message_ref",
             )
@@ -165,15 +164,6 @@ def _collect_tool_indices() -> List[int]:
     return sorted(indices)
 
 
-def _rag_to_prefix(rag_type: str) -> Optional[str]:
-    mapping = {
-        "VECTOR": "VECTOR:",
-        "GRAPH": "GRAPH:",
-        "HYBRID": "HYBRID:",
-        "HYBRIDCOT": "HYBRIDCOT:",
-        "SQL": "SQL:",
-    }
-    return mapping.get(rag_type)
 
 
 def load_profile(path: Path) -> Profile:

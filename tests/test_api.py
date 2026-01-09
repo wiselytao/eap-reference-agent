@@ -59,10 +59,8 @@ tools:
   - tool_id: "demo.hybrid"
     type: "hybridrag_pipeline"
     project_id: "demo"
-    adapter: "hybridrag_chat_api_v1"
     base_url: "http://example.com"
     auth_ref: "TEST_TOKEN"
-    pipeline_prefix: "HYBRID:"
     summary: "Test dataset for hybrid queries."
     capabilities: ["hybrid_rag"]
     constraints:

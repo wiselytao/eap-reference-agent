@@ -2,6 +2,26 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v2.36
+
+### Added
+- HybridRAG chat reuse per tool with titled chats (`ReferenceAgent-yyMMDDhhmmss`).
+
+## v2.35
+
+### Changed
+- Dropped `pipeline_prefix` from tool definitions; routing now derives prefixes from capabilities.
+
+## v2.34
+
+### Changed
+- Removed the adapter field from tool definitions; dispatch now uses `type`.
+
+## v2.33
+
+### Changed
+- Documented supported adapter values in `TOOLS.md` example docs.
+
 ## v2.32
 
 ### Changed

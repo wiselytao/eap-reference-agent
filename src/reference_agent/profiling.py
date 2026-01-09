@@ -12,13 +12,13 @@ import yaml
 from reference_agent.adapters.hybridrag import HybridRagClient, HybridRagConfig
 from reference_agent.models import ToolEntry
 from reference_agent.secrets import resolve_secret
+from reference_agent.tool_routing import prefix_for_tool
 
 
 @dataclass
 class ProfilingRecord:
     tool_id: str
     generated_at: str
-    pipeline_prefix: Optional[str]
     questions: List[str]
     profile_summary: str
     tool_hash: Optional[str] = None
@@ -41,7 +41,6 @@ class ProfilingStore:
             return ProfilingRecord(
                 tool_id=data.get("tool_id", tool_id),
                 generated_at=data.get("generated_at", ""),
-                pipeline_prefix=data.get("pipeline_prefix"),
                 questions=data.get("questions", []),
                 profile_summary=data.get("profile_summary", ""),
                 tool_hash=data.get("tool_hash"),
@@ -57,7 +56,6 @@ class ProfilingStore:
         payload = {
             "tool_id": record.tool_id,
             "generated_at": record.generated_at,
-            "pipeline_prefix": record.pipeline_prefix,
             "questions": record.questions,
             "profile_summary": record.profile_summary,
             "tool_hash": record.tool_hash,
@@ -85,14 +83,13 @@ class RuntimeProber:
         self.retry_backoff_seconds = retry_backoff_seconds
 
     async def probe(self, tool: ToolEntry, questions: List[str]) -> ProfilingRecord:
-        prefix = tool.pipeline_prefix or ""
+        prefix = prefix_for_tool(tool) or ""
         trimmed = questions[: self.max_questions]
         responses = await self._ask_parallel(tool, [f"{prefix} {q}" for q in trimmed])
         summary = self._build_summary(trimmed, responses)
         return ProfilingRecord(
             tool_id=tool.tool_id,
             generated_at=datetime.utcnow().isoformat(timespec="seconds"),
-            pipeline_prefix=tool.pipeline_prefix,
             questions=trimmed,
             profile_summary=summary,
         )
@@ -132,7 +129,7 @@ class RuntimeProber:
 
 
 def question_set_for_tool(tool: ToolEntry) -> List[str]:
-    prefix = (tool.pipeline_prefix or "").upper()
+    prefix = (prefix_for_tool(tool) or "").upper()
     if prefix == "GRAPH:":
         return [
             "List the node labels in this graph and describe each briefly.",
