@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.0
+
+### Changed
+- Major version reset to v3.0.
+
 ## v2.38
 
 ### Fixed

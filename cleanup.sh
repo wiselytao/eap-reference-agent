@@ -4,5 +4,5 @@ find . -type d -name "__pycache__" -prune -exec rm -rf {} +
 find . -type d -name ".*" -prune -exec rm -rf {} +
 rm -fr PRD
 rm -fr Reference
-rm -f AGENTS.md
 rm -fr data/*
+rm -fr tools/profiling/*
