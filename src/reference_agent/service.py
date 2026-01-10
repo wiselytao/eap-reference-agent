@@ -87,7 +87,7 @@ class ReferenceAgentService:
         self.eval_llm = eval_llm or llm
         self.profiling_store = ProfilingStore(Path(self.config.profiling_dir))
         self.prober = RuntimeProber(
-            max_questions=3,
+            max_questions=5,
             timeout_seconds=self.config.profiling_timeout_seconds,
             max_retries=self.config.profiling_max_retries,
             retry_backoff_seconds=self.config.profiling_retry_backoff_seconds,
@@ -477,12 +477,14 @@ class ReferenceAgentService:
             if not force and changed_tool_ids is None and (tool.summary or tool.profile_summary):
                 continue
             record = self.profiling_store.load_latest(tool.tool_id)
-            if record and record.profile_summary and not force:
+            if record and (record.profile_summary or record.l0_profile) and not force:
                 tool.profile_summary = record.profile_summary
+                tool.l0_profile = record.l0_profile or None
                 continue
             questions = question_set_for_tool(tool)
             record = self._run_probe(tool, questions)
             tool.profile_summary = record.profile_summary
+            tool.l0_profile = record.l0_profile or None
             record.tool_hash = tool_fingerprint(tool)
             self.profiling_store.save(record)
         self._write_tools_hash()

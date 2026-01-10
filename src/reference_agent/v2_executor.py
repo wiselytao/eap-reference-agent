@@ -482,6 +482,8 @@ class BoundedExecutor:
 
         def assess(tool_id: str) -> tuple[str, str, str]:
             tool = tools.get(tool_id)
+            if tool and prefix_for_tool(tool) == "VECTOR:" and tool.l0_profile:
+                return self._assess_l0_relevance(tool, query)
             summary = ""
             if tool:
                 summary = tool.profile_summary or tool.summary or ""
@@ -526,6 +528,66 @@ class BoundedExecutor:
         if not relevant_tools:
             return [], ["R_STEP1_RELEVANCE_EMPTY_STOP"], notes, relevance_details
         return relevant_tools, ["R_STEP1_LLM_RELEVANCE_SOFT"], notes, relevance_details
+
+    def _assess_l0_relevance(self, tool: ToolEntry, query: str) -> tuple[str, str, str]:
+        if not self._llm or not self._model:
+            return tool.tool_id, "uncertain", "llm_unavailable"
+        l0_json = json.dumps(tool.l0_profile, ensure_ascii=True, separators=(",", ":"))
+        prompt = (
+            "You are a Layer-0 Relevance Judge for a Vector RAG system.\n\n"
+            "Your task is to decide whether a USER_QUESTION should be considered relevant to a Vector RAG,\n"
+            "based ONLY on the provided L0_PROFILE information.\n"
+            "The L0_PROFILE represents a coarse \"world-domain fingerprint\" derived from probing questions.\n"
+            "It is NOT a complete dataset description.\n\n"
+            "IMPORTANT PRINCIPLES:\n"
+            "1) Recall-first: Do NOT reject unless the mismatch is extremely obvious.\n"
+            "2) Only reject when the USER_QUESTION is clearly from a completely different world/domain.\n"
+            "3) Uncertainty must NOT cause rejection.\n"
+            "4) Do NOT assume knowledge beyond what is explicitly present in the L0_PROFILE.\n"
+            "5) You are judging world/domain overlap, NOT answerability or semantic similarity.\n\n"
+            "Inputs:\n"
+            "- L0_PROFILE:\n"
+            f"{l0_json}\n\n"
+            "- USER_QUESTION:\n"
+            f"{query}\n\n"
+            "Decision logic (strict):\n"
+            "- If the USER_QUESTION clearly belongs to a completely different world\n"
+            "  (e.g., entertainment awards vs enterprise operations, sports matches vs internal systems),\n"
+            "  return CLEARLY_IRRELEVANT.\n"
+            "- If there is any plausible overlap in world, task style, actions, or structures,\n"
+            "  return RELEVANT.\n"
+            "- If you cannot confidently decide, return UNCERTAIN (this still means \"allow\").\n\n"
+            "Output ONLY the following JSON (no additional text):\n\n"
+            "{\n"
+            "  \"verdict\": \"RELEVANT | UNCERTAIN | CLEARLY_IRRELEVANT\",\n"
+            "  \"confidence\": 0.0-1.0,\n"
+            "  \"reason\": \"One-sentence explanation referencing specific L0 signals or the lack thereof.\",\n"
+            "  \"matched_signals\": {\n"
+            "    \"actions\": [],\n"
+            "    \"relations\": [],\n"
+            "    \"task_types\": [],\n"
+            "    \"artifacts\": [],\n"
+            "    \"state_time\": []\n"
+            "  },\n"
+            "  \"decision_rule_applied\": \"only reject on world-level mismatch\"\n"
+            "}\n\n"
+            "Confidence guidance:\n"
+            "- Use high confidence (>=0.8) ONLY when the mismatch is unmistakable.\n"
+            "- Use medium confidence (0.4-0.7) when relevant.\n"
+            "- Use low confidence (<0.4) when uncertain.\n"
+        )
+        try:
+            response = self._llm.generate(self._model, LLMRequest(prompt, 0.0, 256))
+            parsed = json.loads(response)
+            verdict = str(parsed.get("verdict") or "").strip().upper()
+            reason = str(parsed.get("reason") or "").strip()
+            if verdict == "CLEARLY_IRRELEVANT":
+                return tool.tool_id, "not_relevant", reason
+            if verdict == "RELEVANT":
+                return tool.tool_id, "relevant", reason
+            return tool.tool_id, "uncertain", reason
+        except Exception:
+            return tool.tool_id, "uncertain", "llm_error"
 
     def _select_gap_tools(
         self,

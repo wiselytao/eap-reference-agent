@@ -225,9 +225,6 @@ def create_app() -> FastAPI:
             selection_rationale = event.get("selection_rationale") or []
             if selection_rationale:
                 lines.append(f"  - rationale: {', '.join(selection_rationale)}")
-            selection_notes = event.get("selection_notes")
-            if selection_notes:
-                lines.append(f"  - notes: {selection_notes}")
             relevance_details = event.get("relevance_details") or []
             if relevance_details:
                 for detail in relevance_details:

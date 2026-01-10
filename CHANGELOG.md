@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.4
+
+### Changed
+- Removed step selection notes from `<think>` status output.
+
+## v3.3
+
+### Changed
+- Switched vector profiling to L0 JSON prompts and L0-based relevance judging.
+
 ## v3.2
 
 ### Changed

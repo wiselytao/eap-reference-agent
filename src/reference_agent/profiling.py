@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -21,6 +22,7 @@ class ProfilingRecord:
     generated_at: str
     questions: List[str]
     profile_summary: str
+    l0_profile: Dict[str, List[Dict[str, str]]] = field(default_factory=dict)
     tool_hash: Optional[str] = None
     schema: Dict[str, List[str]] = field(default_factory=dict)
 
@@ -43,6 +45,7 @@ class ProfilingStore:
                 generated_at=data.get("generated_at", ""),
                 questions=data.get("questions", []),
                 profile_summary=data.get("profile_summary", ""),
+                l0_profile=data.get("l0_profile", {}) or {},
                 tool_hash=data.get("tool_hash"),
                 schema=data.get("schema", {}) or {},
             )
@@ -58,6 +61,7 @@ class ProfilingStore:
             "generated_at": record.generated_at,
             "questions": record.questions,
             "profile_summary": record.profile_summary,
+            "l0_profile": record.l0_profile,
             "tool_hash": record.tool_hash,
             "schema": record.schema,
         }
@@ -87,11 +91,13 @@ class RuntimeProber:
         trimmed = questions[: self.max_questions]
         responses = await self._ask_parallel(tool, [f"{prefix} {q}" for q in trimmed])
         summary = self._build_summary(trimmed, responses)
+        l0_profile = self._build_l0_profile(responses)
         return ProfilingRecord(
             tool_id=tool.tool_id,
             generated_at=datetime.utcnow().isoformat(timespec="seconds"),
             questions=trimmed,
             profile_summary=summary,
+            l0_profile=l0_profile,
         )
 
     async def _ask_parallel(self, tool: ToolEntry, questions: List[str]) -> List[str]:
@@ -127,6 +133,35 @@ class RuntimeProber:
             lines.append(f"Q: {question}\nA: {snippet}")
         return "\n\n".join(lines)
 
+    @staticmethod
+    def _build_l0_profile(responses: List[str]) -> Dict[str, List[Dict[str, str]]]:
+        merged: Dict[str, List[Dict[str, str]]] = {}
+        for response in responses:
+            payload = RuntimeProber._parse_json(response)
+            if not payload:
+                continue
+            l0 = payload.get("l0_profile") or {}
+            if not isinstance(l0, dict):
+                continue
+            for key, value in l0.items():
+                if not isinstance(value, list):
+                    continue
+                merged.setdefault(key, [])
+                for item in value:
+                    if isinstance(item, dict):
+                        merged[key].append({str(k): str(v) for k, v in item.items()})
+        return merged
+
+    @staticmethod
+    def _parse_json(text: str) -> Dict[str, Any] | None:
+        cleaned = text.strip()
+        if not cleaned:
+            return None
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            return None
+
 
 def question_set_for_tool(tool: ToolEntry) -> List[str]:
     prefix = (prefix_for_tool(tool) or "").upper()
@@ -135,6 +170,74 @@ def question_set_for_tool(tool: ToolEntry) -> List[str]:
             "show me the summary of schema in triple format, and then list all the properties "
             "of each node and relationship, and 3 sample values of each property. No translation.",
             "Provide one example traversal query this graph supports (include the labels and properties used).",
+        ]
+    if prefix == "VECTOR:":
+        return [
+            "Based only on the content you can actually retrieve, list the 8-12 most commonly described "
+            'actions or behaviors (e.g., configure, check, analyze, report, adjust, remediate). '
+            'For each action, provide one short sentence describing the typical context. '
+            'If you cannot determine an action with confidence, explicitly mark it as "Unknown". '
+            "Do NOT infer or guess.\n\n"
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "actions": [\n'
+            '      {"verb": "<action>", "context": "<typical context>"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
+            "Based only on the retrievable content, list 6-10 common and concrete relationship patterns "
+            "using the format:\n"
+            "A -[relation]-> B\n\n"
+            'Avoid abstract placeholders (e.g., "item", "data"). Use only entities or roles you can '
+            'actually observe. If you cannot determine a relationship with confidence, mark it as "Unknown".\n\n'
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "relations": [\n'
+            '      {"from": "A", "relation": "<relation>", "to": "B"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
+            "List 5 question types or example questions that you are MOST confident you can answer "
+            "based on the available content. Each example must reflect common task language found in "
+            "the data (e.g., operation, decision-making, troubleshooting, tracking, comparison). "
+            'If unsure, explicitly mark as "Unknown".\n\n'
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "task_types": [\n'
+            '      {"example_question": "<example question>", "task_type": "<task type>"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
+            "List 5-10 systems, tools, document types, or artifacts that commonly appear in the "
+            "retrievable content (e.g., SOPs, configuration guides, incident records, reports). "
+            "Only include items you can directly observe or clearly identify. Do NOT infer.\n\n"
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "artifacts": [\n'
+            '      {"type": "<artifact type>", "description": "<brief purpose>"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
+            "Describe whether the retrievable content includes references to state changes, histories, "
+            "versions, or time-based sequences. List 3-6 concrete examples of such signals or language "
+            "patterns. If such signals are largely absent, explicitly state that.\n\n"
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "state_time_signals": [\n'
+            '      {"signal": "<state or time-related signal>", "usage": "<usage context>"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
         ]
     if prefix == "SQL:":
         return [

@@ -34,6 +34,7 @@ class ToolEntry(BaseModel):
     auth_ref: Optional[str] = None
     summary: Optional[str] = None
     profile_summary: Optional[str] = None
+    l0_profile: Optional[Dict[str, Any]] = None
     capabilities: List[str] = Field(default_factory=list)
     constraints: ToolConstraints = Field(default_factory=ToolConstraints)
     evidence_contract: EvidenceContract = "OPTIONAL"
