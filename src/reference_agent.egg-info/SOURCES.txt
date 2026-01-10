@@ -19,6 +19,7 @@ src/reference_agent/storage.py
 src/reference_agent/strategies.py
 src/reference_agent/synthesis.py
 src/reference_agent/templates.py
+src/reference_agent/tool_routing.py
 src/reference_agent/tools_fingerprint.py
 src/reference_agent/v2_executor.py
 src/reference_agent/v2_planner.py

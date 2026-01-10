@@ -107,7 +107,7 @@ async def test_ask_endpoint(monkeypatch, temp_config):
     from reference_agent.adapters import hybridrag
     from reference_agent.adapters.llm import LLMClient
 
-    def fake_create_chat(self):
+    def fake_create_chat(self, title=None):
         return "chat123"
 
     def fake_send_message(self, chat_id, question, streaming=False):

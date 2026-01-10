@@ -4,10 +4,13 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from reference_agent.service import ReferenceAgentService
 
 
 def main() -> None:
+    load_dotenv(".env.local")
     parser = argparse.ArgumentParser(description="Run tool profiling.")
     parser.add_argument("--profile", default="default", help="Profile ID to run profiling for")
     parser.add_argument("--force", action="store_true", help="Force re-profiling")

@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v2.38
+
+### Fixed
+- Test stub updated for titled HybridRAG chat creation.
+
+## v2.37
+
+### Added
+- Auto-load `.env.local` in `scripts/profile_tools.py`.
+
 ## v2.36
 
 ### Added

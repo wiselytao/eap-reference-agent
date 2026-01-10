@@ -6,10 +6,10 @@ This file declares tools/pipelines available to the Reference Agent. The YAML bl
 tools:
   - tool_id: "demo.vector"
     type: "hybridrag_pipeline"
-    project_id: "demo"
+    project_id: "vulnerability-scannning"
     base_url: "https://demo.geminidata.com"
-    auth_ref: "HYBRIDRAG_API_TOKEN"
-    summary: "Demo vector dataset for document lookup."
+    auth_ref: "EAP_1_KEY"
+    summary: "Security vulnerability scanning reports including SCA, DAST, and SAST. There are critiality inside the report."
     capabilities: ["vector_rag"]
     constraints:
       timeout_class: "standard"
@@ -19,10 +19,10 @@ tools:
 
   - tool_id: "demo.graph"
     type: "hybridrag_pipeline"
-    project_id: "demo"
+    project_id: "mitre-attack-enterprise"
     base_url: "https://demo.geminidata.com"
-    auth_ref: "HYBRIDRAG_API_TOKEN"
-    summary: "Demo graph dataset for relationship queries."
+    auth_ref: "EAP_2_KEY"
+    summary: "MITRE ATT&CK ENTERPRISE data for Cyber Security intelligence."
     capabilities: ["graph_rag"]
     constraints:
       timeout_class: "standard"
@@ -32,10 +32,10 @@ tools:
 
   - tool_id: "demo.hybrid"
     type: "hybridrag_pipeline"
-    project_id: "demo"
+    project_id: "vulnerability-scanning"
     base_url: "https://demo.geminidata.com"
-    auth_ref: "HYBRIDRAG_API_TOKEN"
-    summary: "Demo hybrid dataset combining vector and graph."
+    auth_ref: "EAP_1_KEY"
+    summary: "Security vulnerability scanning reports including SCA, DAST, and SAST. Application List is included."
     capabilities: ["hybrid_rag", "answer_gen_builtin"]
     constraints:
       timeout_class: "standard"
@@ -44,25 +44,12 @@ tools:
 
   - tool_id: "demo.hybridcot"
     type: "hybridrag_pipeline"
-    project_id: "demo"
+    project_id: "vulnerability-scanning_2"
     base_url: "https://demo.geminidata.com"
-    auth_ref: "HYBRIDRAG_API_TOKEN"
-    summary: "Demo hybridcot dataset for chain-of-thought style hybrid queries."
+    auth_ref: "EAP_3_KEY"
+    summary: "Security vulnerability scanning reports including SCA, DAST, and SAST. CVE vulnerability database included."
     capabilities: ["hybrid_cot", "answer_gen_builtin"]
     constraints:
       timeout_class: "standard"
     evidence_contract: "REQUIRED"
-    evidence_locator_policy: "chat_message_ref"
-
-  - tool_id: "external.partner"
-    type: "external_mcp"
-    project_id: "partner"
-    base_url: "https://partner.example.com"
-    auth_ref: "EXTERNAL_MCP_TOKEN"
-    summary: "External partner MCP source."
-    capabilities: ["external_rag"]
-    constraints:
-      timeout_class: "standard"
-    evidence_contract: "OPTIONAL"
-    evidence_locator_policy: "external_ref"
 ```

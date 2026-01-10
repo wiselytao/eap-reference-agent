@@ -3,6 +3,7 @@ uvicorn>=0.23
 pydantic>=2.6
 httpx>=0.25
 PyYAML>=6.0
+python-dotenv>=1.0
 
 [test]
 pytest>=7.4
