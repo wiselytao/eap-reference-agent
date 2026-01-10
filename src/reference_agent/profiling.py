@@ -132,10 +132,8 @@ def question_set_for_tool(tool: ToolEntry) -> List[str]:
     prefix = (prefix_for_tool(tool) or "").upper()
     if prefix == "GRAPH:":
         return [
-            "List the node labels in this graph and describe each briefly.",
-            "List the relationship types and the allowed source/target labels for each.",
-            "For each node label, list key properties and provide 2-3 sample values.",
-            "For each relationship type, list key properties and provide 2-3 sample values.",
+            "show me the summary of schema in triple format, and then list all the properties "
+            "of each node and relationship, and 3 sample values of each property. No translation.",
             "Provide one example traversal query this graph supports (include the labels and properties used).",
         ]
     if prefix == "SQL:":

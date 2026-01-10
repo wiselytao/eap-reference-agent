@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.2
+
+### Changed
+- Added back the traversal query example to graph profiling questions.
+
+## v3.1
+
+### Changed
+- Updated graph profiling to use a single schema summary question.
+
 ## v3.0
 
 ### Changed

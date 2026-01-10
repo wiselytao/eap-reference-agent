@@ -4,7 +4,7 @@ This file declares tools/pipelines available to the Reference Agent. The YAML bl
 
 ```yaml
 tools:
-  - tool_id: "demo.vector"
+  - tool_id: "demo.vector.va1"
     type: "hybridrag_pipeline"
     project_id: "vulnerability-scannning"
     base_url: "https://demo.geminidata.com"
@@ -17,7 +17,7 @@ tools:
     evidence_contract: "OPTIONAL"
     evidence_locator_policy: "chat_message_ref"
 
-  - tool_id: "demo.graph"
+  - tool_id: "demo.graph.mitre1"
     type: "hybridrag_pipeline"
     project_id: "mitre-attack-enterprise"
     base_url: "https://demo.geminidata.com"
@@ -30,7 +30,7 @@ tools:
     evidence_contract: "OPTIONAL"
     evidence_locator_policy: "chat_message_ref"
 
-  - tool_id: "demo.hybrid"
+  - tool_id: "demo.hybrid.va1"
     type: "hybridrag_pipeline"
     project_id: "vulnerability-scanning"
     base_url: "https://demo.geminidata.com"
@@ -42,7 +42,7 @@ tools:
     evidence_contract: "REQUIRED"
     evidence_locator_policy: "chat_message_ref"
 
-  - tool_id: "demo.hybridcot"
+  - tool_id: "demo.hybridcot.va2"
     type: "hybridrag_pipeline"
     project_id: "vulnerability-scanning_2"
     base_url: "https://demo.geminidata.com"
