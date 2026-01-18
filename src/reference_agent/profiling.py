@@ -181,27 +181,23 @@ class RuntimeProber:
         question_index: int | None,
         on_retry: Optional[Callable[[int, int, int, str], None]],
     ) -> str:
-        retry_max = 1
-        if question_index == 1 and (prefix_for_tool(tool) or "").upper() == "GRAPH:":
-            retry_max = max(1, self.graph_schema_retry_max)
+        retry_max = max(1, self.graph_schema_retry_max)
         for attempt in range(retry_max):
             chat_id = await loop.run_in_executor(None, client.create_chat)
             answer, _ = await loop.run_in_executor(None, client.send_message, chat_id, question)
-            if self._is_schema_unavailable(answer):
+            if self._is_retryable_response(answer):
                 if attempt + 1 >= retry_max:
                     return answer
                 if on_retry and question_index:
-                    on_retry(question_index, attempt + 1, retry_max, "schema_unavailable")
+                    on_retry(question_index, attempt + 1, retry_max, "retryable_response")
                 await asyncio.sleep(self.retry_backoff_seconds * (attempt + 1))
                 continue
             return answer
         return ""
 
     @staticmethod
-    def _is_schema_unavailable(answer: str) -> bool:
+    def _is_retryable_response(answer: str) -> bool:
         lowered = (answer or "").lower()
-        if "schema" not in lowered:
-            return False
         return any(
             phrase in lowered
             for phrase in (

@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.16
+
+### Changed
+- Applied profiling retry detection to all RAG types using shared retry criteria.
+
 ## v3.15
 
 ### Changed
