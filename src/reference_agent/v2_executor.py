@@ -193,15 +193,19 @@ class BoundedExecutor:
                         split_tool_ids.append(tool_id)
                 else:
                     split_tool_ids.append(tool_id)
-            if split_tool_ids:
-                questions, query_rationale = self._build_multi_queries(
-                    query,
-                    current_query,
-                    evaluations[-1] if evaluations else None,
-                )
+            query_rationale: List[str] = []
+            if step_index == 1:
+                if split_tool_ids:
+                    questions, query_rationale = self._build_multi_queries(
+                        query,
+                        current_query,
+                        evaluations[-1] if evaluations else None,
+                    )
+                else:
+                    questions = []
+                    query_rationale = ["R_MULTI_QUERY_TOOL_BYPASS"]
             else:
                 questions = []
-                query_rationale = ["R_MULTI_QUERY_TOOL_BYPASS"]
             questions_for_emit: List[str] = []
             total_questions = 0
             for tool_id in step_tool_ids:
@@ -212,14 +216,25 @@ class BoundedExecutor:
                     if step_index == 1:
                         tool_questions[tool_id] = questions or [current_query]
                     else:
-                        merged = "\n".join(questions) if questions else ""
-                        if not self._should_split_queries(tool):
-                            merged = "\n".join(
-                                item for item in [merged, current_query] if item
-                            ).strip()
-                        if not merged:
-                            merged = current_query
-                        tool_questions[tool_id] = [merged]
+                        tool_qs, tool_rationale = self._build_tool_queries(
+                            query,
+                            current_query,
+                            evaluations[-1] if evaluations else None,
+                            tool,
+                        )
+                        query_rationale.extend(tool_rationale)
+                        if self._should_split_queries(tool):
+                            tool_questions[tool_id] = tool_qs or [current_query]
+                        else:
+                            merged_lines = [item for item in tool_qs if item]
+                            followup_json = self._extract_followup_json_context(current_query)
+                            if followup_json:
+                                merged_lines.append(
+                                    f"Follow-up context (JSON): {followup_json}"
+                                )
+                            if not merged_lines and current_query:
+                                merged_lines = [current_query]
+                            tool_questions[tool_id] = ["\n".join(merged_lines).strip()]
                 else:
                     tool_questions[tool_id] = [query]
                 total_questions += len(tool_questions[tool_id])
@@ -285,8 +300,8 @@ class BoundedExecutor:
                     step_index=step_index,
                     template="DYNAMIC",
                     tool_ids=step_tool_ids,
-                    questions=questions,
-                    rationale_codes=selection_rationale + query_rationale,
+                    questions=questions_for_emit,
+                    rationale_codes=selection_rationale + sorted(set(query_rationale)),
                     notes=selection_notes,
                 )
             )
@@ -474,6 +489,13 @@ class BoundedExecutor:
         return draft
 
     @staticmethod
+    def _extract_followup_json_context(current_query: str) -> str:
+        for line in (current_query or "").splitlines():
+            if line.startswith("Follow-up context (JSON): "):
+                return line[len("Follow-up context (JSON): ") :].strip()
+        return ""
+
+    @staticmethod
     def _should_split_queries(tool: ToolEntry) -> bool:
         if tool.type == "external_mcp":
             return True
@@ -513,6 +535,46 @@ class BoundedExecutor:
             }
         except Exception:
             return base
+
+    def _build_tool_queries(
+        self,
+        original_query: str,
+        current_query: str,
+        evaluation: EvaluationRecord | None,
+        tool: ToolEntry,
+    ) -> tuple[List[str], List[str]]:
+        gaps = []
+        if evaluation:
+            gaps = [item.strip() for item in evaluation.missing_items + evaluation.missing_fields if item.strip()]
+        if not self._llm or not self._model:
+            return [current_query], ["R_TOOL_QUERY_FALLBACK"]
+        summary = tool.profile_summary or tool.summary or ""
+        l0_profile = ""
+        if tool.l0_profile:
+            l0_profile = json.dumps(tool.l0_profile, ensure_ascii=True, separators=(",", ":"))
+        prompt = (
+            "Generate up to 3 short, distinct follow-up questions that directly target the Missing items/fields "
+            "and are tailored to this tool. Each question must be standalone and in the same language as the "
+            "Original question. Do not introduce new entities or constraints not implied by the Original question "
+            "or Missing items/fields. Output JSON only: return a JSON array of strings with no extra text. "
+            "If Missing items/fields is empty, return a JSON array containing the Current query context only.\n\n"
+            f"Original question: {original_query}\n"
+            f"Current query context: {current_query}\n"
+            f"Missing items/fields: {', '.join(gaps)}\n"
+            f"Tool: {tool.tool_id}\n"
+            f"Tool summary: {summary}\n"
+            f"Tool L0 profile: {l0_profile}\n"
+        )
+        try:
+            response = self._llm.generate(self._model, LLMRequest(prompt, 0.0, 256))
+            parsed = json.loads(response)
+            if isinstance(parsed, list):
+                questions = [str(item).strip() for item in parsed if str(item).strip()]
+                if questions:
+                    return questions[:3], ["R_TOOL_QUERY_LLM"]
+        except Exception:
+            pass
+        return [current_query], ["R_TOOL_QUERY_FALLBACK"]
 
     def _build_multi_queries(
         self,

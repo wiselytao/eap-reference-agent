@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.23
+
+### Changed
+- Reduced merged follow-up questions to include only tool-specific prompts plus JSON context.
+
+## v3.22
+
+### Changed
+- Generated tool-specific follow-up questions after step 1 with per-tool merging rules.
+
 ## v3.21
 
 ### Changed
