@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.20
+
+### Changed
+- Updated partial-answer template to include evidence and request counts.
+
 ## v3.19
 
 ### Changed

@@ -201,7 +201,10 @@ class ReferenceAgentService:
             answer = get_template(profile.answer_policy.no_evidence_template, request.query)
             final_status_reasons.append("DOWNGRADE_EMPTY")
         elif final_status == "PARTIAL":
-            template = get_template("TPL_PARTIAL_V1", request.query)
+            template = get_template("TPL_PARTIAL_V1", request.query).format(
+                evidence_count=len(evidence),
+                request_count=len(result.steps),
+            )
             answer = self.composer.compose_partial(request.query, answer, evidence, template)
             if template not in answer:
                 answer = f"{template}\n\n{answer}"

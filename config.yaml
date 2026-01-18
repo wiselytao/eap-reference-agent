@@ -28,7 +28,7 @@ runtime:
   streaming_default: false
   timeout_seconds: 300
   concurrency: 4
-  rate_limit_per_base_url: 2
+  rate_limit_per_base_url: 3
   port: 8081
 
 audit:
