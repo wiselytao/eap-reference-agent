@@ -1,0 +1,25 @@
+tool_id: demo.graph.mitre1
+generated_at: '2026-01-10T09:28:27'
+questions:
+- List the node labels in this graph and describe each briefly.
+- List the relationship types and the allowed source/target labels for each.
+- For each node label, list key properties and provide 2-3 sample values.
+profile_summary: 'Q: List the node labels in this graph and describe each briefly.
+
+  A: Here are the node labels present in the graph, along with brief descriptions
+  for each:  | Node Label              | Brief Description | |------------------------|------------------|
+  | **attack_pattern...
+
+
+  Q: List the relationship types and the allowed source/target labels for each.
+
+  A: Here are the relationship types and their allowed source and target node labels:  |
+  Relationship Type         | Source Node Label   | Target Node Label         | |--------------------------|----------...
+
+
+  Q: For each node label, list key properties and provide 2-3 sample values.
+
+  A: Sorry, I couldn''t retrieve the required data to answer your question. Please
+  try again later.'
+tool_hash: ddef7a49478ee1f72d7f76c86af22338fdc39de49aba3f06c601c0916eb2739a
+schema: {}

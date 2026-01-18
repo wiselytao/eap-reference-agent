@@ -1,0 +1,21 @@
+tool_id: demo.hybridcot
+generated_at: '2026-01-10T04:26:48'
+questions:
+- What topics does this dataset cover?
+- Provide 3 example questions this dataset can answer.
+- List key entities or concepts (5-10) that appear frequently.
+profile_summary: "Q: What topics does this dataset cover?\nA: Based on the provided\
+  \ data, this dataset covers the following topics:  1. **Application System Basic\
+  \ Information**      - Includes details such as system name, code, abbreviation,\
+  \ host type, programmi...\n\nQ: Provide 3 example questions this dataset can answer.\n\
+  A: Unable to answer questions not relevant to this project and its data\n\nQ: List\
+  \ key entities or concepts (5-10) that appear frequently.\nA: \u6839\u64DA\u63D0\
+  \u4F9B\u7684\u8CC7\u6599\uFF0C\u4EE5\u4E0B\u662F\u51FA\u73FE\u983B\u7387\u8F03\u9AD8\
+  \u7684\u95DC\u9375\u5BE6\u9AD4\u6216\u6982\u5FF5\uFF085-10\u9805\uFF09\uFF1A  1.\
+  \ **\u61C9\u7528\u7CFB\u7D71\u540D\u7A31**\uFF08\u5982 WebGoat\u3001OrchardCore\u3001\
+  openmrs\u3001Umbraco-CMS\u3001ofbiz\uFF09 2. **\u4E3B\u6A5F\u5225**\uFF08AIX\u3001\
+  Windows\uFF09 3. **\u7A0B\u5F0F\u8A9E\u8A00**\uFF08C#\u3001Java\u3001JavaScript\uFF09\
+  \ 4. **Source_Code\u5B58\u653E\u4E3B\u6A5F**\uFF08Gitlab\uFF09 5. **\u696D\u52D9\
+  \u55AE\u4F4D**\uFF08\u4F01\u91D1\u3001..."
+tool_hash: c415d91c11248569c2facc6833d1b4eba60ee8bc20363c0927c86dbf59d51b71
+schema: {}

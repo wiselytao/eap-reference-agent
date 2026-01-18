@@ -1,0 +1,38 @@
+tool_id: demo.hybrid.va1
+generated_at: '2026-01-18T09:44:37'
+questions:
+- What topics does this dataset cover?
+- Provide 3 example questions this dataset can answer.
+- List key entities or concepts (5-10) that appear frequently.
+- What time range or scope is included?
+- What common filters or fields are available (e.g., product, version, region)?
+profile_summary: 'Q: What topics does this dataset cover?
+
+  A: The dataset covers the following topics:  ### 1. Application Systems - **Systems
+  included:** WebGoat, OrchardCore, openmrs, Umbraco-CMS, ofbiz - **Key properties:**
+  Programming language (JavaScript, C...
+
+
+  Q: Provide 3 example questions this dataset can answer.
+
+  A: Unable to answer questions not relevant to this project and its data
+
+
+  Q: List key entities or concepts (5-10) that appear frequently.
+
+  A: Sorry, I could not find the relevant data to answer your question.
+
+
+  Q: What time range or scope is included?
+
+  A: The time range included in the data is as follows:  | Category                |
+  Earliest Date/Time         | Latest Date/Time           | |-------------------------|---------------------------|-------...
+
+
+  Q: What common filters or fields are available (e.g., product, version, region)?
+
+  A: Common filters or fields available in the graph data schema include:  | Field                        |
+  Description                        | |------------------------------|----------------------------...'
+l0_profile: {}
+tool_hash: 91ff09393ecb7ed69026b7f9dad8598c25813397b7895bb5fa21144efa4f10ce
+schema: {}

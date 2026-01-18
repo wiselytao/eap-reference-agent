@@ -38,6 +38,7 @@ class RuntimeConfig(BaseModel):
     streaming_default: bool = False
     timeout_seconds: int = 60
     concurrency: int = 4
+    rate_limit_per_base_url: int = 5
     port: int = 8080
     stream_status_updates: bool = True
 

@@ -1,0 +1,17 @@
+tool_id: demo.hybrid
+generated_at: '2026-01-10T06:07:06'
+questions:
+- What topics does this dataset cover?
+- Provide 3 example questions this dataset can answer.
+- List key entities or concepts (5-10) that appear frequently.
+profile_summary: "Q: What topics does this dataset cover?\nA: The dataset covers topics\
+  \ related to:  - **Business sectors**: Finance, Manufacturing (Automotive), Government\
+  \ (Software Development) - **Application systems**: WebGoat, OrchardCore, openmrs,\
+  \ Umbraco-...\n\nQ: Provide 3 example questions this dataset can answer.\nA: Unable\
+  \ to answer questions not relevant to this project and its data\n\nQ: List key entities\
+  \ or concepts (5-10) that appear frequently.\nA: The following key entities or concepts\
+  \ frequently appear in the graph data schema:  | Entity or Concept Name   | Type\
+  \ | Frequency | |-------------------------|------|-----------| | \u61C9\u7528\u7CFB\
+  \u7D71               ..."
+tool_hash: bd83067f076ec863d83b95dc3c2a6a088f7ce60333171be42bb418268c28533d
+schema: {}

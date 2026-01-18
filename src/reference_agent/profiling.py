@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from threading import Lock
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -80,11 +81,15 @@ class RuntimeProber:
         timeout_seconds: int = 60,
         max_retries: int = 2,
         retry_backoff_seconds: int = 2,
+        rate_limit_per_base_url: int = 5,
     ) -> None:
         self.max_questions = max_questions
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
         self.retry_backoff_seconds = retry_backoff_seconds
+        self.rate_limit_per_base_url = rate_limit_per_base_url
+        self._rate_limiters: Dict[int, Dict[str, asyncio.Semaphore]] = {}
+        self._rate_limit_lock = Lock()
 
     async def probe(self, tool: ToolEntry, questions: List[str]) -> ProfilingRecord:
         prefix = prefix_for_tool(tool) or ""
@@ -112,8 +117,16 @@ class RuntimeProber:
         )
         client = HybridRagClient(config)
         loop = asyncio.get_running_loop()
+        limiter = self._get_rate_limiter(tool.base_url)
         for attempt in range(self.max_retries + 1):
             try:
+                if limiter:
+                    async with limiter:
+                        chat_id = await loop.run_in_executor(None, client.create_chat)
+                        answer, _ = await loop.run_in_executor(
+                            None, client.send_message, chat_id, question
+                        )
+                        return answer
                 chat_id = await loop.run_in_executor(None, client.create_chat)
                 answer, _ = await loop.run_in_executor(None, client.send_message, chat_id, question)
                 return answer
@@ -122,6 +135,21 @@ class RuntimeProber:
                     raise
                 await asyncio.sleep(self.retry_backoff_seconds * (attempt + 1))
         return ""
+
+    def _get_rate_limiter(self, base_url: Optional[str]) -> Optional[asyncio.Semaphore]:
+        if not base_url or self.rate_limit_per_base_url <= 0:
+            return None
+        normalized = base_url.rstrip("/")
+        if not normalized:
+            return None
+        loop_id = id(asyncio.get_running_loop())
+        with self._rate_limit_lock:
+            loop_limiters = self._rate_limiters.setdefault(loop_id, {})
+            limiter = loop_limiters.get(normalized)
+            if not limiter:
+                limiter = asyncio.Semaphore(self.rate_limit_per_base_url)
+                loop_limiters[normalized] = limiter
+            return limiter
 
     @staticmethod
     def _build_summary(questions: List[str], responses: List[str]) -> str:

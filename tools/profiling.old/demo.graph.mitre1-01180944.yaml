@@ -1,0 +1,24 @@
+tool_id: demo.graph.mitre1
+generated_at: '2026-01-18T09:44:20'
+questions:
+- show me the summary of schema in triple format, and then list all the properties
+  of each node and relationship, and 3 sample values of each property. No translation.
+- Provide one example traversal query this graph supports (include the labels and
+  properties used).
+profile_summary: 'Q: show me the summary of schema in triple format, and then list
+  all the properties of each node and relationship, and 3 sample values of each property.
+  No translation.
+
+  A: Sorry, I couldn''t retrieve the schema data needed to answer your question. Please
+  try again later or provide more details.
+
+
+  Q: Provide one example traversal query this graph supports (include the labels and
+  properties used).
+
+  A: Here is an example traversal query supported by this graph, which identifies
+  malware leveraging specific vulnerabilities (CVE IDs), including the labels and
+  properties used:  **Cypher Query:** ```cyph...'
+l0_profile: {}
+tool_hash: ddef7a49478ee1f72d7f76c86af22338fdc39de49aba3f06c601c0916eb2739a
+schema: {}

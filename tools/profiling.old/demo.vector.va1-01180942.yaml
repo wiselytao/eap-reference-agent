@@ -1,0 +1,85 @@
+tool_id: demo.vector.va1
+generated_at: '2026-01-18T09:42:51'
+questions:
+- "Based only on the content you can actually retrieve, list the 8-12 most commonly\
+  \ described actions or behaviors (e.g., configure, check, analyze, report, adjust,\
+  \ remediate). For each action, provide one short sentence describing the typical\
+  \ context. If you cannot determine an action with confidence, explicitly mark it\
+  \ as \"Unknown\". Do NOT infer or guess.\n\nOutput ONLY the following JSON:\n{\n\
+  \  \"raw_answer\": \"<your natural language answer here>\",\n  \"l0_profile\": {\n\
+  \    \"actions\": [\n      {\"verb\": \"<action>\", \"context\": \"<typical context>\"\
+  }\n    ]\n  }\n}"
+- "Based only on the retrievable content, list 6-10 common and concrete relationship\
+  \ patterns using the format:\nA -[relation]-> B\n\nAvoid abstract placeholders (e.g.,\
+  \ \"item\", \"data\"). Use only entities or roles you can actually observe. If you\
+  \ cannot determine a relationship with confidence, mark it as \"Unknown\".\n\nOutput\
+  \ ONLY the following JSON:\n{\n  \"raw_answer\": \"<your natural language answer\
+  \ here>\",\n  \"l0_profile\": {\n    \"relations\": [\n      {\"from\": \"A\", \"\
+  relation\": \"<relation>\", \"to\": \"B\"}\n    ]\n  }\n}"
+- "List 5 question types or example questions that you are MOST confident you can\
+  \ answer based on the available content. Each example must reflect common task language\
+  \ found in the data (e.g., operation, decision-making, troubleshooting, tracking,\
+  \ comparison). If unsure, explicitly mark as \"Unknown\".\n\nOutput ONLY the following\
+  \ JSON:\n{\n  \"raw_answer\": \"<your natural language answer here>\",\n  \"l0_profile\"\
+  : {\n    \"task_types\": [\n      {\"example_question\": \"<example question>\"\
+  , \"task_type\": \"<task type>\"}\n    ]\n  }\n}"
+- "List 5-10 systems, tools, document types, or artifacts that commonly appear in\
+  \ the retrievable content (e.g., SOPs, configuration guides, incident records, reports).\
+  \ Only include items you can directly observe or clearly identify. Do NOT infer.\n\
+  \nOutput ONLY the following JSON:\n{\n  \"raw_answer\": \"<your natural language\
+  \ answer here>\",\n  \"l0_profile\": {\n    \"artifacts\": [\n      {\"type\": \"\
+  <artifact type>\", \"description\": \"<brief purpose>\"}\n    ]\n  }\n}"
+- "Describe whether the retrievable content includes references to state changes,\
+  \ histories, versions, or time-based sequences. List 3-6 concrete examples of such\
+  \ signals or language patterns. If such signals are largely absent, explicitly state\
+  \ that.\n\nOutput ONLY the following JSON:\n{\n  \"raw_answer\": \"<your natural\
+  \ language answer here>\",\n  \"l0_profile\": {\n    \"state_time_signals\": [\n\
+  \      {\"signal\": \"<state or time-related signal>\", \"usage\": \"<usage context>\"\
+  }\n    ]\n  }\n}"
+profile_summary: "Q: Based only on the content you can actually retrieve, list the\
+  \ 8-12 most commonly described actions or behaviors (e.g., configure, check, analyze,\
+  \ report, adjust, remediate). For each action, provide one short sentence describing\
+  \ the typical context. If you cannot determine an action with confidence, explicitly\
+  \ mark it as \"Unknown\". Do NOT infer or guess.\n\nOutput ONLY the following JSON:\n\
+  {\n  \"raw_answer\": \"<your natural language answer here>\",\n  \"l0_profile\"\
+  : {\n    \"actions\": [\n      {\"verb\": \"<action>\", \"context\": \"<typical\
+  \ context>\"}\n    ]\n  }\n}\nA: \u5F88\u62B1\u6B49\uFF0C\u60A8\u7684\u554F\u984C\
+  \u627E\u4E0D\u5230\u7B54\u6848\u7121\u6CD5\u56DE\u7B54!\n\nQ: Based only on the\
+  \ retrievable content, list 6-10 common and concrete relationship patterns using\
+  \ the format:\nA -[relation]-> B\n\nAvoid abstract placeholders (e.g., \"item\"\
+  , \"data\"). Use only entities or roles you can actually observe. If you cannot\
+  \ determine a relationship with confidence, mark it as \"Unknown\".\n\nOutput ONLY\
+  \ the following JSON:\n{\n  \"raw_answer\": \"<your natural language answer here>\"\
+  ,\n  \"l0_profile\": {\n    \"relations\": [\n      {\"from\": \"A\", \"relation\"\
+  : \"<relation>\", \"to\": \"B\"}\n    ]\n  }\n}\nA: \u5F88\u62B1\u6B49\uFF0C\u60A8\
+  \u7684\u554F\u984C\u627E\u4E0D\u5230\u7B54\u6848\u7121\u6CD5\u56DE\u7B54!\n\nQ:\
+  \ List 5 question types or example questions that you are MOST confident you can\
+  \ answer based on the available content. Each example must reflect common task language\
+  \ found in the data (e.g., operation, decision-making, troubleshooting, tracking,\
+  \ comparison). If unsure, explicitly mark as \"Unknown\".\n\nOutput ONLY the following\
+  \ JSON:\n{\n  \"raw_answer\": \"<your natural language answer here>\",\n  \"l0_profile\"\
+  : {\n    \"task_types\": [\n      {\"example_question\": \"<example question>\"\
+  , \"task_type\": \"<task type>\"}\n    ]\n  }\n}\nA: {   \"questions\": [     \"\
+  What is the result of the first code snippet?\",     \"What is the result of the\
+  \ second code snippet?\",     \"What feedback is given when logging in as 'foo'?\"\
+  ,     \"How are vulne...\n\nQ: List 5-10 systems, tools, document types, or artifacts\
+  \ that commonly appear in the retrievable content (e.g., SOPs, configuration guides,\
+  \ incident records, reports). Only include items you can directly observe or clearly\
+  \ identify. Do NOT infer.\n\nOutput ONLY the following JSON:\n{\n  \"raw_answer\"\
+  : \"<your natural language answer here>\",\n  \"l0_profile\": {\n    \"artifacts\"\
+  : [\n      {\"type\": \"<artifact type>\", \"description\": \"<brief purpose>\"\
+  }\n    ]\n  }\n}\nA: {   \"items\": [     \"SAST-WebGoat-0714-BIRT.pdf\",     \"\
+  SAST-WebGoat-0714-Legacy.pdf\",     \"SCA_ofbiz.pdf\",     \"application-webgoat.properties\"\
+  ,     \"application-webwolf.properties\",     \"JWT_signing_s...\n\nQ: Describe\
+  \ whether the retrievable content includes references to state changes, histories,\
+  \ versions, or time-based sequences. List 3-6 concrete examples of such signals\
+  \ or language patterns. If such signals are largely absent, explicitly state that.\n\
+  \nOutput ONLY the following JSON:\n{\n  \"raw_answer\": \"<your natural language\
+  \ answer here>\",\n  \"l0_profile\": {\n    \"state_time_signals\": [\n      {\"\
+  signal\": \"<state or time-related signal>\", \"usage\": \"<usage context>\"}\n\
+  \    ]\n  }\n}\nA: {   \"includes_state_changes_histories_versions_time_sequences\"\
+  : true,   \"examples\": [     \"The application 'signs out' the user from all devices\
+  \ by deleting all JWTs in the backend store attached to t..."
+l0_profile: {}
+tool_hash: b960c31295f76353d3b91ffbc302ee7e25d7e28df9d02d6ebab56d636c39a889
+schema: {}

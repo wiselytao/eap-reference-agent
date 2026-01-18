@@ -1,0 +1,27 @@
+tool_id: demo.vector.va1
+generated_at: '2026-01-10T09:25:45'
+questions:
+- What topics does this dataset cover?
+- Provide 3 example questions this dataset can answer.
+- List key entities or concepts (5-10) that appear frequently.
+profile_summary: 'Q: What topics does this dataset cover?
+
+  A: This dataset covers topics such as software security vulnerabilities, risk assessment
+  (likelihood and impact), issue prioritization, code analysis results, and privacy
+  concerns related to web applicat...
+
+
+  Q: Provide 3 example questions this dataset can answer.
+
+  A: 1. What are the priority levels for security issues and their examples? 2. What
+  vulnerabilities exist in jQuery version 2.1.4? 3. What are the possible outcomes
+  of the provided code snippets in the JW...
+
+
+  Q: List key entities or concepts (5-10) that appear frequently.
+
+  A: Key entities or concepts frequently appearing include: Likelihood, Impact, Fortify
+  Priority Order, Critical, High, Medium, Low, Errors, Poor Error Handling, Catch
+  Block, Exception.'
+tool_hash: b960c31295f76353d3b91ffbc302ee7e25d7e28df9d02d6ebab56d636c39a889
+schema: {}

@@ -1,0 +1,19 @@
+tool_id: demo.graph
+generated_at: '2026-01-10T04:26:34'
+questions:
+- List the node labels in this graph and describe each briefly.
+- List the relationship types and the allowed source/target labels for each.
+- For each node label, list key properties and provide 2-3 sample values.
+profile_summary: "Q: List the node labels in this graph and describe each briefly.\n\
+  A: Below is a summary of all node labels in the graph and their brief descriptions:\
+  \  | Node Label         | Brief Description                                    \
+  \                                          ...\n\nQ: List the relationship types\
+  \ and the allowed source/target labels for each.\nA: Here are the relationship types\
+  \ and their allowed source/target node labels:  | Relationship Type         | Source\
+  \ Node Label | Target Node Label     | |--------------------------|------------------|-...\n\
+  \nQ: For each node label, list key properties and provide 2-3 sample values.\nA:\
+  \ Here are the key properties and 2-3 sample values for each node label:  ### \u61C9\
+  \u7528\u7CFB\u7D71  | Property             | Sample Values                  | |----------------------|-------------------------------|\
+  \ | S..."
+tool_hash: 1b77175678310a9c448115310f2d013ab95dc579f99ed919cde291e910ac5110
+schema: {}

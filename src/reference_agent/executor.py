@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import time
+from contextlib import contextmanager
 from datetime import datetime
-from threading import Lock
+from threading import Lock, Semaphore
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -42,11 +43,15 @@ class StrategyExecutor:
         tool_health: Dict[str, ToolHealth],
         composer: AnswerComposer,
         timeout_seconds: int,
+        rate_limit_per_base_url: int = 5,
     ) -> None:
         self._tools = tools
         self._tool_health = tool_health
         self._composer = composer
         self._timeout_seconds = timeout_seconds
+        self._rate_limit_per_base_url = rate_limit_per_base_url
+        self._rate_limiters: Dict[str, Semaphore] = {}
+        self._rate_limit_lock = Lock()
         self._chat_cache: Dict[str, str] = {}
         self._chat_cache_lock = Lock()
 
@@ -61,6 +66,26 @@ class StrategyExecutor:
         chat_id = client.create_chat(title=self._chat_title())
         with self._chat_cache_lock:
             return self._chat_cache.setdefault(tool.tool_id, chat_id)
+
+    @contextmanager
+    def _rate_limit(self, base_url: Optional[str]):
+        if not base_url or self._rate_limit_per_base_url <= 0:
+            yield
+            return
+        normalized = base_url.rstrip("/")
+        if not normalized:
+            yield
+            return
+        with self._rate_limit_lock:
+            limiter = self._rate_limiters.get(normalized)
+            if not limiter:
+                limiter = Semaphore(self._rate_limit_per_base_url)
+                self._rate_limiters[normalized] = limiter
+        limiter.acquire()
+        try:
+            yield
+        finally:
+            limiter.release()
 
     def execute(self, strategy_id: str, query: str, profile: Profile) -> ExecutionResult:
         if strategy_id in {strategies.STR_V, strategies.STR_FALLBACK_V}:
@@ -181,16 +206,17 @@ class StrategyExecutor:
         answer = ""
         error_code = None
         try:
-            client = HybridRagClient(
-                HybridRagConfig(
-                    base_url=tool.base_url or "",
-                    auth_token=resolve_secret(tool.auth_ref),
-                    timeout_seconds=self._timeout_seconds,
+            with self._rate_limit(tool.base_url):
+                client = HybridRagClient(
+                    HybridRagConfig(
+                        base_url=tool.base_url or "",
+                        auth_token=resolve_secret(tool.auth_ref),
+                        timeout_seconds=self._timeout_seconds,
+                    )
                 )
-            )
-            chat_id = self._get_or_create_chat_id(tool, client)
-            answer, message_id = client.send_message(chat_id, f"{prefix} {query}")
-            evidence = [build_hybrid_evidence(tool.tool_id, chat_id, message_id, answer)]
+                chat_id = self._get_or_create_chat_id(tool, client)
+                answer, message_id = client.send_message(chat_id, f"{prefix} {query}")
+                evidence = [build_hybrid_evidence(tool.tool_id, chat_id, message_id, answer)]
         except Exception as exc:
             evidence = []
             error_code = str(exc)
@@ -211,10 +237,11 @@ class StrategyExecutor:
         answer = ""
         evidence: List[Evidence] = []
         try:
-            client = ExternalMcpClient(
-                ExternalMcpConfig(base_url=tool.base_url or "", auth_token=resolve_secret(tool.auth_ref))
-            )
-            answer, evidence = client.query(tool.tool_id, query)
+            with self._rate_limit(tool.base_url):
+                client = ExternalMcpClient(
+                    ExternalMcpConfig(base_url=tool.base_url or "", auth_token=resolve_secret(tool.auth_ref))
+                )
+                answer, evidence = client.query(tool.tool_id, query)
         except Exception as exc:
             error_code = str(exc)
         duration_ms = int((time.perf_counter() - start) * 1000)

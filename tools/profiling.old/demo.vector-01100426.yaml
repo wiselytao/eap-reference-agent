@@ -1,0 +1,27 @@
+tool_id: demo.vector
+generated_at: '2026-01-10T04:26:18'
+questions:
+- What topics does this dataset cover?
+- Provide 3 example questions this dataset can answer.
+- List key entities or concepts (5-10) that appear frequently.
+profile_summary: 'Q: What topics does this dataset cover?
+
+  A: This dataset covers software security analysis, vulnerability types, risk prioritization,
+  code review results, and recommendations for mitigating security issues such as
+  SQL injection, password manage...
+
+
+  Q: Provide 3 example questions this dataset can answer.
+
+  A: 1. What is the definition of "Likelihood" and "Impact" in vulnerability assessment?
+  2. What are examples of critical, high, medium, and low priority security issues?
+  3. What vulnerabilities are associ...
+
+
+  Q: List key entities or concepts (5-10) that appear frequently.
+
+  A: Key entities or concepts include: Likelihood, Impact, Fortify Priority Order,
+  Critical, High, Medium, Low, Poor Error Handling, Exception, Catch Block, Security
+  Features.'
+tool_hash: d69b555d50364d7e7977947b533392d33dcb2d8e4447f34825da0a22c1bce872
+schema: {}

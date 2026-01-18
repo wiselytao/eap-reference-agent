@@ -2,6 +2,21 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.11
+
+### Changed
+- Fixed profiling rate limit semaphore scoping to avoid cross-event-loop errors.
+
+## v3.10
+
+### Changed
+- Applied per-base_url concurrency limits to profiling requests and documented the setting.
+
+## v3.9
+
+### Changed
+- Added per-base_url concurrency limits for tool requests (default 5).
+
 ## v3.8
 
 ### Changed

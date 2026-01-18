@@ -91,6 +91,7 @@ class ReferenceAgentService:
             timeout_seconds=self.config.profiling_timeout_seconds,
             max_retries=self.config.profiling_max_retries,
             retry_backoff_seconds=self.config.profiling_retry_backoff_seconds,
+            rate_limit_per_base_url=self.config.runtime.rate_limit_per_base_url,
         )
         self._tools_hash_path = Path(self.config.profiling_dir) / ".tools_md.hash"
         self.plan_builder = PlanSkeletonBuilder(plan_llm, plan_model, self.profiling_store)
@@ -99,7 +100,11 @@ class ReferenceAgentService:
         self.evaluator = Evaluator(eval_llm, eval_model)
         self.composer = AnswerComposer(llm, self.config.llm.model)
         self.executor = StrategyExecutor(
-            self.tools, self.tool_health, self.composer, self.config.runtime.timeout_seconds
+            self.tools,
+            self.tool_health,
+            self.composer,
+            self.config.runtime.timeout_seconds,
+            self.config.runtime.rate_limit_per_base_url,
         )
         self.bounded_executor = BoundedExecutor(self.executor, self.evaluator, plan_llm, plan_model)
 

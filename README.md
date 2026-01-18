@@ -53,6 +53,8 @@ Port configuration:
 - Streaming status updates in `/v1/chat/completions`:
   - `runtime.stream_status_updates: true`
   - `REFERENCE_AGENT_STREAM_STATUS_UPDATES=true`
+Rate limiting:
+- `runtime.rate_limit_per_base_url` limits concurrent requests per tool `base_url` (default 5).
 Trace configuration:
 - `audit.enabled: true|false` to enable/disable trace file output
 
