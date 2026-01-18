@@ -99,11 +99,13 @@ class RuntimeProber:
         on_question: Optional[Callable[[int, str], None]] = None,
         on_retry: Optional[Callable[[int, int, int, str], None]] = None,
     ) -> ProfilingRecord:
-        prefix = prefix_for_tool(tool) or ""
-        trimmed = questions[: self.max_questions]
+        if (prefix_for_tool(tool) or "").upper() in {"HYBRID:", "HYBRIDCOT:"}:
+            trimmed = questions
+        else:
+            trimmed = questions[: self.max_questions]
         responses = await self._ask_parallel(
             tool,
-            [f"{prefix} {q}" for q in trimmed],
+            trimmed,
             on_question=on_question,
             on_retry=on_retry,
         )
@@ -146,33 +148,41 @@ class RuntimeProber:
         client = HybridRagClient(config)
         loop = asyncio.get_running_loop()
         limiter = self._get_rate_limiter(tool.base_url)
-        for attempt in range(self.max_retries + 1):
+        retry_max = max(1, self.graph_schema_retry_max)
+        for attempt in range(retry_max):
             try:
                 if limiter:
                     async with limiter:
-                        return await self._ask_with_optional_retry(
+                        return await self._ask_once(
                             tool,
                             client,
                             loop,
                             question,
                             question_index,
                             on_retry,
+                            attempt,
+                            retry_max,
                         )
-                return await self._ask_with_optional_retry(
+                return await self._ask_once(
                     tool,
                     client,
                     loop,
                     question,
                     question_index,
                     on_retry,
+                    attempt,
+                    retry_max,
                 )
-            except Exception:
-                if attempt >= self.max_retries:
+            except Exception as exc:
+                if attempt + 1 >= retry_max:
                     raise
+                if on_retry and question_index:
+                    reason = "content_retry" if str(exc) == "retryable_response" else "error_retry"
+                    on_retry(question_index, attempt + 1, retry_max, reason)
                 await asyncio.sleep(self.retry_backoff_seconds * (attempt + 1))
         return ""
 
-    async def _ask_with_optional_retry(
+    async def _ask_once(
         self,
         tool: ToolEntry,
         client: HybridRagClient,
@@ -180,20 +190,16 @@ class RuntimeProber:
         question: str,
         question_index: int | None,
         on_retry: Optional[Callable[[int, int, int, str], None]],
+        attempt: int,
+        retry_max: int,
     ) -> str:
-        retry_max = max(1, self.graph_schema_retry_max)
-        for attempt in range(retry_max):
-            chat_id = await loop.run_in_executor(None, client.create_chat)
-            answer, _ = await loop.run_in_executor(None, client.send_message, chat_id, question)
-            if self._is_retryable_response(answer):
-                if attempt + 1 >= retry_max:
-                    return answer
-                if on_retry and question_index:
-                    on_retry(question_index, attempt + 1, retry_max, "retryable_response")
-                await asyncio.sleep(self.retry_backoff_seconds * (attempt + 1))
-                continue
-            return answer
-        return ""
+        chat_id = await loop.run_in_executor(None, client.create_chat)
+        answer, _ = await loop.run_in_executor(None, client.send_message, chat_id, question)
+        if self._is_retryable_response(answer):
+            if on_retry and question_index:
+                on_retry(question_index, attempt + 1, retry_max, "content_retry")
+            raise RuntimeError("retryable_response")
+        return answer
 
     @staticmethod
     def _is_retryable_response(answer: str) -> bool:
@@ -340,6 +346,80 @@ def question_set_for_tool(tool: ToolEntry) -> List[str]:
             "  }\n"
             "}",
         ]
+    if prefix in {"HYBRID:", "HYBRIDCOT:"}:
+        vector_questions = [
+            "Based only on the content you can actually retrieve, list the 8-12 most commonly described "
+            'actions or behaviors (e.g., configure, check, analyze, report, adjust, remediate). '
+            'For each action, provide one short sentence describing the typical context. '
+            'If you cannot determine an action with confidence, explicitly mark it as "Unknown". '
+            "Do NOT infer or guess.\n\n"
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "actions": [\n'
+            '      {"verb": "<action>", "context": "<typical context>"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
+            "Based only on the retrievable content, list 6-10 common and concrete relationship patterns "
+            "using the format:\n"
+            "A -[relation]-> B\n\n"
+            'Avoid abstract placeholders (e.g., "item", "data"). Use only entities or roles you can '
+            'actually observe. If you cannot determine a relationship with confidence, mark it as "Unknown".\n\n'
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "relations": [\n'
+            '      {"from": "A", "relation": "<relation>", "to": "B"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
+            "List 5 question types or example questions that you are MOST confident you can answer "
+            "based on the available content. Each example must reflect common task language found in "
+            "the data (e.g., operation, decision-making, troubleshooting, tracking, comparison). "
+            'If unsure, explicitly mark as "Unknown".\n\n'
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "task_types": [\n'
+            '      {"example_question": "<example question>", "task_type": "<task type>"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
+            "List 5-10 systems, tools, document types, or artifacts that commonly appear in the "
+            "retrievable content (e.g., SOPs, configuration guides, incident records, reports). "
+            "Only include items you can directly observe or clearly identify. Do NOT infer.\n\n"
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "artifacts": [\n'
+            '      {"type": "<artifact type>", "description": "<brief purpose>"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
+            "Describe whether the retrievable content includes references to state changes, histories, "
+            "versions, or time-based sequences. List 3-6 concrete examples of such signals or language "
+            "patterns. If such signals are largely absent, explicitly state that.\n\n"
+            "Output ONLY the following JSON:\n"
+            "{\n"
+            '  "raw_answer": "<your natural language answer here>",\n'
+            '  "l0_profile": {\n'
+            '    "state_time_signals": [\n'
+            '      {"signal": "<state or time-related signal>", "usage": "<usage context>"}\n'
+            "    ]\n"
+            "  }\n"
+            "}",
+        ]
+        graph_questions = [
+            "show me the summary of schema in triple format, and then list all the properties "
+            "of each node and relationship, and 3 sample values of each property. No translation.",
+            "Provide one example traversal query this graph supports (include the labels and properties used).",
+        ]
+        return [f"VECTOR: {q}" for q in vector_questions] + [f"GRAPH: {q}" for q in graph_questions]
     if prefix == "SQL:":
         return [
             "What are the main tables or datasets available?",

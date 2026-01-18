@@ -2,6 +2,21 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.19
+
+### Changed
+- Allowed hybrid profiling to run full vector+graph question sets without trimming.
+
+## v3.18
+
+### Changed
+- Profiled hybrid tools using vector L0 questions plus graph schema questions.
+
+## v3.17
+
+### Changed
+- Unified profiling retry logic to avoid overlapping retry loops.
+
 ## v3.16
 
 ### Changed
