@@ -67,6 +67,7 @@ Environment tools (optional):
 - If a tool has no `summary` in `tools/TOOLS.md`, runtime probing will ask up to 3 questions in parallel and save a profiling summary.
 - `TOOLS.md` changes trigger re-profiling for affected tools on the next request.
 - Manual profiling: `python scripts/profile_tools.py --profile default --force` (or `--tool-id <id>`).
+- Graph schema probe retries up to 5 times when the first schema question returns an unavailable response.
 
 ## Docker
 ```bash

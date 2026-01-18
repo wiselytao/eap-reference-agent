@@ -7,7 +7,7 @@ from threading import Lock
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import yaml
 
@@ -88,13 +88,25 @@ class RuntimeProber:
         self.max_retries = max_retries
         self.retry_backoff_seconds = retry_backoff_seconds
         self.rate_limit_per_base_url = rate_limit_per_base_url
+        self.graph_schema_retry_max = 5
         self._rate_limiters: Dict[int, Dict[str, asyncio.Semaphore]] = {}
         self._rate_limit_lock = Lock()
 
-    async def probe(self, tool: ToolEntry, questions: List[str]) -> ProfilingRecord:
+    async def probe(
+        self,
+        tool: ToolEntry,
+        questions: List[str],
+        on_question: Optional[Callable[[int, str], None]] = None,
+        on_retry: Optional[Callable[[int, int, int, str], None]] = None,
+    ) -> ProfilingRecord:
         prefix = prefix_for_tool(tool) or ""
         trimmed = questions[: self.max_questions]
-        responses = await self._ask_parallel(tool, [f"{prefix} {q}" for q in trimmed])
+        responses = await self._ask_parallel(
+            tool,
+            [f"{prefix} {q}" for q in trimmed],
+            on_question=on_question,
+            on_retry=on_retry,
+        )
         summary = self._build_summary(trimmed, responses)
         l0_profile = self._build_l0_profile(responses)
         return ProfilingRecord(
@@ -105,11 +117,27 @@ class RuntimeProber:
             l0_profile=l0_profile,
         )
 
-    async def _ask_parallel(self, tool: ToolEntry, questions: List[str]) -> List[str]:
-        tasks = [self._ask(tool, question) for question in questions]
+    async def _ask_parallel(
+        self,
+        tool: ToolEntry,
+        questions: List[str],
+        on_question: Optional[Callable[[int, str], None]] = None,
+        on_retry: Optional[Callable[[int, int, int, str], None]] = None,
+    ) -> List[str]:
+        tasks = []
+        for idx, question in enumerate(questions, start=1):
+            if on_question:
+                on_question(idx, question)
+            tasks.append(self._ask(tool, question, question_index=idx, on_retry=on_retry))
         return await asyncio.gather(*tasks, return_exceptions=False)
 
-    async def _ask(self, tool: ToolEntry, question: str) -> str:
+    async def _ask(
+        self,
+        tool: ToolEntry,
+        question: str,
+        question_index: int | None = None,
+        on_retry: Optional[Callable[[int, int, int, str], None]] = None,
+    ) -> str:
         config = HybridRagConfig(
             base_url=tool.base_url or "",
             auth_token=resolve_secret(tool.auth_ref),
@@ -122,19 +150,70 @@ class RuntimeProber:
             try:
                 if limiter:
                     async with limiter:
-                        chat_id = await loop.run_in_executor(None, client.create_chat)
-                        answer, _ = await loop.run_in_executor(
-                            None, client.send_message, chat_id, question
+                        return await self._ask_with_optional_retry(
+                            tool,
+                            client,
+                            loop,
+                            question,
+                            question_index,
+                            on_retry,
                         )
-                        return answer
-                chat_id = await loop.run_in_executor(None, client.create_chat)
-                answer, _ = await loop.run_in_executor(None, client.send_message, chat_id, question)
-                return answer
+                return await self._ask_with_optional_retry(
+                    tool,
+                    client,
+                    loop,
+                    question,
+                    question_index,
+                    on_retry,
+                )
             except Exception:
                 if attempt >= self.max_retries:
                     raise
                 await asyncio.sleep(self.retry_backoff_seconds * (attempt + 1))
         return ""
+
+    async def _ask_with_optional_retry(
+        self,
+        tool: ToolEntry,
+        client: HybridRagClient,
+        loop: asyncio.AbstractEventLoop,
+        question: str,
+        question_index: int | None,
+        on_retry: Optional[Callable[[int, int, int, str], None]],
+    ) -> str:
+        retry_max = 1
+        if question_index == 1 and (prefix_for_tool(tool) or "").upper() == "GRAPH:":
+            retry_max = max(1, self.graph_schema_retry_max)
+        for attempt in range(retry_max):
+            chat_id = await loop.run_in_executor(None, client.create_chat)
+            answer, _ = await loop.run_in_executor(None, client.send_message, chat_id, question)
+            if self._is_schema_unavailable(answer):
+                if attempt + 1 >= retry_max:
+                    return answer
+                if on_retry and question_index:
+                    on_retry(question_index, attempt + 1, retry_max, "schema_unavailable")
+                await asyncio.sleep(self.retry_backoff_seconds * (attempt + 1))
+                continue
+            return answer
+        return ""
+
+    @staticmethod
+    def _is_schema_unavailable(answer: str) -> bool:
+        lowered = (answer or "").lower()
+        if "schema" not in lowered:
+            return False
+        return any(
+            phrase in lowered
+            for phrase in (
+                "could not retrieve",
+                "couldn't retrieve",
+                "unable to retrieve",
+                "cannot retrieve",
+                "can't retrieve",
+                "unable to answer",
+                "unable to access",
+            )
+        )
 
     def _get_rate_limiter(self, base_url: Optional[str]) -> Optional[asyncio.Semaphore]:
         if not base_url or self.rate_limit_per_base_url <= 0:
@@ -156,8 +235,6 @@ class RuntimeProber:
         lines = []
         for question, response in zip(questions, responses):
             snippet = response.strip().replace("\n", " ")
-            if len(snippet) > 200:
-                snippet = snippet[:200] + "..."
             lines.append(f"Q: {question}\nA: {snippet}")
         return "\n\n".join(lines)
 

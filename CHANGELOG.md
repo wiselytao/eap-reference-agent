@@ -2,6 +2,26 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.15
+
+### Changed
+- Removed profiling summary truncation to keep full answers.
+
+## v3.14
+
+### Changed
+- Enforced --tool-id filtering during profiling and added retry progress output.
+
+## v3.13
+
+### Changed
+- Retried graph schema profiling question when responses indicate schema is unavailable.
+
+## v3.12
+
+### Changed
+- Added profiling progress output to `scripts/profile_tools.py`.
+
 ## v3.11
 
 ### Changed

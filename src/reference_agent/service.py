@@ -465,13 +465,23 @@ class ReferenceAgentService:
         except Exception:
             return {}
 
-    def _ensure_profiling(self, profile: Profile, force: bool = False, tool_ids: list[str] | None = None) -> None:
+    def _ensure_profiling(
+        self,
+        profile: Profile,
+        force: bool = False,
+        tool_ids: list[str] | None = None,
+        progress_cb: Callable[[dict], None] | None = None,
+    ) -> list[str]:
         changed_tool_ids = self._detect_changed_tools()
+        target_tool_ids = set(tool_ids) if tool_ids else None
         if force:
-            changed_tool_ids = set(tool_ids or profile.enabled_tools)
-        elif tool_ids:
-            changed_tool_ids = set(tool_ids) & set(profile.enabled_tools)
+            changed_tool_ids = target_tool_ids or set(profile.enabled_tools)
+        elif target_tool_ids:
+            changed_tool_ids = target_tool_ids & set(profile.enabled_tools)
+        processed: list[str] = []
         for tool_id in profile.enabled_tools:
+            if target_tool_ids and tool_id not in target_tool_ids:
+                continue
             if changed_tool_ids is not None and tool_id not in changed_tool_ids and not force:
                 continue
             tool = self.tools.get(tool_id)
@@ -487,22 +497,82 @@ class ReferenceAgentService:
                 tool.l0_profile = record.l0_profile or None
                 continue
             questions = question_set_for_tool(tool)
-            record = self._run_probe(tool, questions)
+            if progress_cb:
+                progress_cb(
+                    {
+                        "type": "tool_started",
+                        "tool_id": tool.tool_id,
+                        "question_count": len(questions),
+                        "rate_limit_per_base_url": self.config.runtime.rate_limit_per_base_url,
+                    }
+                )
+            record = self._run_probe(
+                tool,
+                questions,
+                progress_cb=progress_cb,
+            )
             tool.profile_summary = record.profile_summary
             tool.l0_profile = record.l0_profile or None
             record.tool_hash = tool_fingerprint(tool)
             self.profiling_store.save(record)
+            processed.append(tool.tool_id)
+            if progress_cb:
+                progress_cb(
+                    {
+                        "type": "tool_completed",
+                        "tool_id": tool.tool_id,
+                        "question_count": len(questions),
+                    }
+                )
         self._write_tools_hash()
+        return processed
 
-    def _run_probe(self, tool: ToolEntry, questions: list[str]):
+    def _run_probe(
+        self,
+        tool: ToolEntry,
+        questions: list[str],
+        progress_cb: Callable[[dict], None] | None = None,
+    ):
+        def on_question(idx: int, question: str) -> None:
+            if not progress_cb:
+                return
+            progress_cb(
+                {
+                    "type": "question_started",
+                    "tool_id": tool.tool_id,
+                    "question_index": idx,
+                    "question": question,
+                }
+            )
+        def on_retry(idx: int, attempt: int, max_attempts: int, reason: str) -> None:
+            if not progress_cb:
+                return
+            progress_cb(
+                {
+                    "type": "question_retry",
+                    "tool_id": tool.tool_id,
+                    "question_index": idx,
+                    "attempt": attempt,
+                    "max_attempts": max_attempts,
+                    "reason": reason,
+                }
+            )
+
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            return asyncio.run(self.prober.probe(tool, questions))
+            return asyncio.run(
+                self.prober.probe(tool, questions, on_question=on_question, on_retry=on_retry)
+            )
         if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(self.prober.probe(tool, questions), loop)
+            future = asyncio.run_coroutine_threadsafe(
+                self.prober.probe(tool, questions, on_question=on_question, on_retry=on_retry),
+                loop,
+            )
             return future.result()
-        return loop.run_until_complete(self.prober.probe(tool, questions))
+        return loop.run_until_complete(
+            self.prober.probe(tool, questions, on_question=on_question, on_retry=on_retry)
+        )
 
     def _detect_changed_tools(self) -> set[str] | None:
         current_hash = self._compute_tools_hash()
@@ -530,10 +600,21 @@ class ReferenceAgentService:
         current_hash = self._compute_tools_hash()
         self._tools_hash_path.write_text(current_hash)
 
-    def run_profiling(self, profile_id: str, force: bool = False, tool_ids: list[str] | None = None) -> dict:
+    def run_profiling(
+        self,
+        profile_id: str,
+        force: bool = False,
+        tool_ids: list[str] | None = None,
+        progress_cb: Callable[[dict], None] | None = None,
+    ) -> dict:
         profile = self._get_profile(profile_id)
-        self._ensure_profiling(profile, force=force, tool_ids=tool_ids)
-        return {"status": "ok"}
+        processed = self._ensure_profiling(
+            profile,
+            force=force,
+            tool_ids=tool_ids,
+            progress_cb=progress_cb,
+        )
+        return {"status": "ok", "profile_id": profile_id, "processed_tools": processed}
 
     @staticmethod
     def _build_llm_client(config, model_name):
