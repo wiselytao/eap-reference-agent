@@ -443,10 +443,14 @@ class BoundedExecutor:
         missing_fields: List[str],
         found_fields: List[str],
     ) -> str:
-        summary = self._truncate(answer, 300)
+        followup_context = self._extract_followup_context(answer)
+        summary = followup_context.get("summary") or self._truncate(answer, 300)
         lines = [original_query]
         if summary:
             lines.append(f"Known summary: {summary}")
+        if followup_context:
+            context_json = json.dumps(followup_context, ensure_ascii=True, separators=(",", ":"))
+            lines.append(f"Follow-up context (JSON): {context_json}")
         if missing_items:
             lines.append(f"Missing items: {', '.join(missing_items)}")
         if missing_fields:
@@ -454,25 +458,48 @@ class BoundedExecutor:
         if found_fields:
             lines.append(f"Identifiers: {', '.join(found_fields)}")
         draft = "\n".join(lines)
-        if not self._llm or not self._model:
-            return draft
-        prompt = (
-            "Rewrite the following follow-up context into a single concise question. "
-            "Keep it focused on retrieving the missing items/fields. Do not include labels like "
-            "'Missing items' or 'Missing fields' in the final question.\n\n"
-            f"{draft}\n"
-        )
-        try:
-            rewritten = self._llm.generate(self._model, LLMRequest(prompt, 0.0, 128)).strip()
-            return rewritten or draft
-        except Exception:
-            return draft
+        return draft
 
     @staticmethod
     def _should_split_queries(tool: ToolEntry) -> bool:
         if tool.type == "external_mcp":
             return True
         return prefix_for_tool(tool) == "VECTOR:"
+
+    def _extract_followup_context(self, answer: str) -> dict:
+        base = {
+            "summary": self._truncate(answer, 300),
+            "key_entities": [],
+            "key_fields": [],
+            "prereq_facts": [],
+        }
+        if not self._llm or not self._model:
+            return base
+        prompt = (
+            "Extract a compact follow-up context from the answer. "
+            "Return JSON only with keys: summary (string), key_entities (list), "
+            "key_fields (list), prereq_facts (list). "
+            "Use only information present in the answer. Do not introduce new entities. "
+            "Keep lists concise (0-5 items).\n\n"
+            f"Answer: {answer}\n"
+        )
+        try:
+            response = self._llm.generate(self._model, LLMRequest(prompt, 0.0, 256))
+            parsed = json.loads(response)
+            if not isinstance(parsed, dict):
+                return base
+            summary = str(parsed.get("summary") or "").strip() or base["summary"]
+            key_entities = [str(item).strip() for item in parsed.get("key_entities", []) if str(item).strip()]
+            key_fields = [str(item).strip() for item in parsed.get("key_fields", []) if str(item).strip()]
+            prereq_facts = [str(item).strip() for item in parsed.get("prereq_facts", []) if str(item).strip()]
+            return {
+                "summary": summary,
+                "key_entities": key_entities[:5],
+                "key_fields": key_fields[:5],
+                "prereq_facts": prereq_facts[:5],
+            }
+        except Exception:
+            return base
 
     def _build_multi_queries(
         self,
@@ -493,7 +520,7 @@ class BoundedExecutor:
             "Output JSON only: return a JSON array of strings with no extra text. "
             "If Missing items/fields is empty, return a JSON array containing the Current query context only.\n\n"
             f"Original question: {original_query}\n"
-            f"Current query context: {current_query}\n"
+            f"Current query context (may include JSON follow-up context): {current_query}\n"
             f"Missing items/fields: {', '.join(gaps)}\n"
         )
         try:

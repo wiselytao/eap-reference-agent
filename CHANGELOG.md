@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.8
+
+### Changed
+- Added structured follow-up context extraction to improve downstream questions.
+
 ## v3.7
 
 ### Changed
