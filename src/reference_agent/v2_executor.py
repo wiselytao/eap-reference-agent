@@ -182,32 +182,58 @@ class BoundedExecutor:
                 break
 
             step_answers: List[str] = []
-            questions, query_rationale = self._build_multi_queries(
-                query,
-                current_query,
-                evaluations[-1] if evaluations else None,
-            )
+            tool_questions: Dict[str, List[str]] = {}
+            split_tool_ids = []
+            for tool_id in step_tool_ids:
+                tool = tools.get(tool_id)
+                if not tool:
+                    continue
+                if self._should_split_queries(tool):
+                    split_tool_ids.append(tool_id)
+            if split_tool_ids:
+                questions, query_rationale = self._build_multi_queries(
+                    query,
+                    current_query,
+                    evaluations[-1] if evaluations else None,
+                )
+            else:
+                questions = []
+                query_rationale = ["R_MULTI_QUERY_TOOL_BYPASS"]
+            questions_for_emit: List[str] = []
+            total_questions = 0
+            for tool_id in step_tool_ids:
+                tool = tools.get(tool_id)
+                if not tool:
+                    continue
+                if tool_id in split_tool_ids:
+                    tool_questions[tool_id] = questions or [current_query]
+                else:
+                    tool_questions[tool_id] = [query]
+                total_questions += len(tool_questions[tool_id])
+                for question in tool_questions[tool_id]:
+                    if question not in questions_for_emit:
+                        questions_for_emit.append(question)
             self._emit(
                 event_handler,
                 {
                     "type": "step_started",
                     "step_index": step_index,
                     "tool_ids": step_tool_ids,
-                    "question_count": len(questions),
-                    "questions": questions,
+                    "question_count": total_questions,
+                    "questions": questions_for_emit,
                     "selection_rationale": selection_rationale,
                     "selection_notes": selection_notes,
                     "relevance_details": relevance_details,
                 },
             )
-            max_workers = min(12, len(step_tool_ids) * len(questions)) or 1
+            max_workers = min(12, total_questions) or 1
             with ThreadPoolExecutor(max_workers=max_workers) as pool:
                 futures = {}
                 for tool_id in step_tool_ids:
                     tool = tools.get(tool_id)
                     if not tool:
                         continue
-                    for q_index, question in enumerate(questions, start=1):
+                    for q_index, question in enumerate(tool_questions.get(tool_id, []), start=1):
                         self._emit(
                             event_handler,
                             {
@@ -442,6 +468,12 @@ class BoundedExecutor:
         except Exception:
             return draft
 
+    @staticmethod
+    def _should_split_queries(tool: ToolEntry) -> bool:
+        if tool.type == "external_mcp":
+            return True
+        return prefix_for_tool(tool) == "VECTOR:"
+
     def _build_multi_queries(
         self,
         original_query: str,
@@ -454,8 +486,12 @@ class BoundedExecutor:
         if not self._llm or not self._model:
             return [current_query], ["R_MULTI_QUERY_FALLBACK"]
         prompt = (
-            "Generate up to 3 short, distinct follow-up questions to retrieve missing information. "
-            "Each question must be standalone. Return a JSON array of strings only.\n\n"
+            "Generate up to 3 short, distinct follow-up questions that directly target the Missing items/fields. "
+            "Each question must be standalone, in the same language as the Original question, and must include at "
+            "least one Missing item/field term (verbatim when possible). Do not introduce new entities or "
+            "constraints not implied by the Original question or Missing items/fields. "
+            "Output JSON only: return a JSON array of strings with no extra text. "
+            "If Missing items/fields is empty, return a JSON array containing the Current query context only.\n\n"
             f"Original question: {original_query}\n"
             f"Current query context: {current_query}\n"
             f"Missing items/fields: {', '.join(gaps)}\n"

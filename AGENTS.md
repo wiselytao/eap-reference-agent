@@ -27,3 +27,8 @@ There is no commit history in this repository yet, so no established convention 
 
 ## Configuration and Security Notes
 Do not add secrets or credentials to this repository. If you introduce configuration files, provide template examples and document required fields.
+
+## Change Control
+1. Before making changes, provide a brief plan and wait for approval.
+2. Every change must update `CHANGELOG.md` and `VERSION.md`.
+3. Each change increments the minor version. Major version increments require explicit user request or approval.

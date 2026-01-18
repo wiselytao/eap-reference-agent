@@ -2,6 +2,21 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.7
+
+### Changed
+- Clarified plan skeleton prompt definitions for answer_blueprint and required_fields.
+
+## v3.6
+
+### Changed
+- Split multi-queries only for vector and external tools; other tools use the original query.
+
+## v3.5
+
+### Changed
+- Tightened multi-query prompt to enforce JSON-only output and gap-focused questions.
+
 ## v3.4
 
 ### Changed
