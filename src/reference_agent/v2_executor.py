@@ -188,7 +188,10 @@ class BoundedExecutor:
                 tool = tools.get(tool_id)
                 if not tool:
                     continue
-                if self._should_split_queries(tool):
+                if step_index == 1:
+                    if self._should_split_queries(tool):
+                        split_tool_ids.append(tool_id)
+                else:
                     split_tool_ids.append(tool_id)
             if split_tool_ids:
                 questions, query_rationale = self._build_multi_queries(
@@ -206,7 +209,17 @@ class BoundedExecutor:
                 if not tool:
                     continue
                 if tool_id in split_tool_ids:
-                    tool_questions[tool_id] = questions or [current_query]
+                    if step_index == 1:
+                        tool_questions[tool_id] = questions or [current_query]
+                    else:
+                        merged = "\n".join(questions) if questions else ""
+                        if not self._should_split_queries(tool):
+                            merged = "\n".join(
+                                item for item in [merged, current_query] if item
+                            ).strip()
+                        if not merged:
+                            merged = current_query
+                        tool_questions[tool_id] = [merged]
                 else:
                     tool_questions[tool_id] = [query]
                 total_questions += len(tool_questions[tool_id])

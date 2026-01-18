@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.21
+
+### Changed
+- Used follow-up questions after step 1, merging them for graph/hybrid tools.
+
 ## v3.20
 
 ### Changed
