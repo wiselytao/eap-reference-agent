@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v3.24
+
+### Changed
+- Added distributed and fan-out execution plans with query prefixes.
+
 ## v3.23
 
 ### Changed

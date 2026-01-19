@@ -7,7 +7,7 @@ from pathlib import Path
 import asyncio
 from queue import Queue
 from threading import Thread
-from typing import Callable, Dict, Iterable, Optional
+from typing import Any, Callable, Dict, Iterable, Optional
 
 from reference_agent.adapters.llm import LLMClient
 from reference_agent.adapters.hybridrag import HybridRagClient, HybridRagConfig
@@ -108,6 +108,26 @@ class ReferenceAgentService:
         )
         self.bounded_executor = BoundedExecutor(self.executor, self.evaluator, plan_llm, plan_model)
 
+    @staticmethod
+    def _extract_execution_plan(
+        query: str, context: Optional[Dict[str, Any]]
+    ) -> tuple[str, Optional[Dict[str, Any]]]:
+        prefixes = {
+            "DISTRIBUTED:": "DISTRIBUTED",
+            "DISTRI:": "DISTRIBUTED",
+            "FAN-OUT:": "FAN_OUT",
+            "FANOUT:": "FAN_OUT",
+        }
+        stripped = (query or "").lstrip()
+        upper = stripped.upper()
+        for prefix, plan in prefixes.items():
+            if upper.startswith(prefix):
+                cleaned = stripped[len(prefix) :].lstrip()
+                merged = dict(context or {})
+                merged["execution_plan"] = plan
+                return cleaned, merged
+        return query, context
+
     def ask(self, request: AskRequest) -> AskResponse:
         return self._ask_impl(request, None)
 
@@ -152,14 +172,15 @@ class ReferenceAgentService:
     def _ask_impl(
         self, request: AskRequest, event_handler: Callable[[dict], None] | None
     ) -> AskResponse:
+        query, context = self._extract_execution_plan(request.query, request.context)
         profile = self._get_profile(request.profile_id)
         self._ensure_profiling(profile)
         self._emit(event_handler, {"type": "plan_started"})
-        plan_skeleton = self.plan_builder.build(request.query, profile, self.tools)
-        plan_execution = self.bounded_planner.build(request.query, profile, self.tools, request.context)
+        plan_skeleton = self.plan_builder.build(query, profile, self.tools)
+        plan_execution = self.bounded_planner.build(query, profile, self.tools, context)
         router_output = (
             self.router.select_strategy(
-                request.query, profile, self.tools, self.tool_health, request.context
+                query, profile, self.tools, self.tool_health, context
             )
             if not request.strategy_id
             else self._manual_strategy(request.strategy_id, profile)
@@ -176,7 +197,7 @@ class ReferenceAgentService:
             },
         )
         result = self.bounded_executor.execute(
-            plan_execution, plan_skeleton, request.query, profile, self.tools, event_handler
+            plan_execution, plan_skeleton, query, profile, self.tools, event_handler
         )
         evidence = sort_evidence(dedupe_evidence(result.evidence))
         evidence = evidence[: profile.limits.evidence_max]
@@ -195,13 +216,13 @@ class ReferenceAgentService:
                 final_status_reasons.append("DOWNGRADE_EVIDENCE_CONTRACT")
         if profile.answer_policy.must_cite and not evidence:
             final_status = "EMPTY"
-            answer = get_template(profile.answer_policy.no_evidence_template, request.query)
+            answer = get_template(profile.answer_policy.no_evidence_template, query)
             final_status_reasons.append("DOWNGRADE_NO_EVIDENCE")
         elif final_status == "EMPTY":
-            answer = get_template(profile.answer_policy.no_evidence_template, request.query)
+            answer = get_template(profile.answer_policy.no_evidence_template, query)
             final_status_reasons.append("DOWNGRADE_EMPTY")
         elif final_status == "PARTIAL":
-            template = get_template("TPL_PARTIAL_V1", request.query).format(
+            template = get_template("TPL_PARTIAL_V1", query).format(
                 evidence_count=len(evidence),
                 request_count=len(result.steps),
             )

@@ -16,6 +16,7 @@ from reference_agent.models import (
     PlanSkeleton,
     PlanStep,
     Profile,
+    StepRecord,
     StepPlan,
     ToolEntry,
 )
@@ -46,6 +47,10 @@ class BoundedExecutor:
     ) -> ExecutionResult:
         if plan.template == "T3":
             return self._execute_t3(plan, plan_skeleton, query, profile, tools, event_handler)
+        if plan.template == "FAN_OUT":
+            return self._execute_fan_out(plan_skeleton, query, profile, tools, event_handler)
+        if plan.template == "DISTRIBUTED":
+            return self._execute_distributed(plan_skeleton, query, profile, tools, event_handler)
         if plan.template == "DYNAMIC":
             return self._execute_dynamic(plan_skeleton, query, profile, tools, event_handler)
         return self._execute_sequential(plan.steps, plan_skeleton, query, profile, tools, event_handler)
@@ -118,6 +123,155 @@ class BoundedExecutor:
             max_steps=profile.limits.max_steps,
         )
         return ExecutionResult(answer, evidence, steps, status, evaluations=[evaluation])
+
+    def _execute_fan_out(
+        self,
+        plan_skeleton: PlanSkeleton,
+        query: str,
+        profile: Profile,
+        tools: Dict[str, ToolEntry],
+        event_handler: Callable[[dict], None] | None,
+    ) -> ExecutionResult:
+        tool_ids = [
+            tool_id
+            for tool_id in (plan_skeleton.candidate_tools or profile.enabled_tools)
+            if tool_id in tools
+        ]
+        if not tool_ids:
+            return ExecutionResult("", [], [], "EMPTY")
+        steps: List[StepRecord] = []
+        evidence: List[Evidence] = []
+        tool_answers: List[tuple[str, str]] = []
+        self._emit(
+            event_handler,
+            {
+                "type": "step_started",
+                "step_index": 1,
+                "tool_ids": tool_ids,
+                "questions": [query],
+            },
+        )
+        with ThreadPoolExecutor(max_workers=min(12, len(tool_ids)) or 1) as pool:
+            futures = {}
+            for tool_id in tool_ids:
+                tool = tools.get(tool_id)
+                if not tool:
+                    continue
+                self._emit(event_handler, {"type": "tool_started", "step_index": 1, "tool_id": tool_id})
+                futures[tool_id] = pool.submit(self._executor.call_tool, tool, query)
+            for tool_id, future in futures.items():
+                answer, step_evidence, step_record = future.result()
+                step_record.input_summary["step_index"] = 1
+                step_record.input_summary["query_index"] = 1
+                step_record.step_id = f"1:{tool_id}:1"
+                steps.append(step_record)
+                evidence.extend(step_evidence)
+                tool_answers.append((tool_id, answer))
+                self._emit(
+                    event_handler,
+                    {
+                        "type": "tool_completed",
+                        "step_index": 1,
+                        "tool_id": tool_id,
+                        "duration_ms": step_record.duration_ms,
+                        "error_code": step_record.error_code,
+                    },
+                )
+        parts = []
+        for tool_id, answer in tool_answers:
+            label = f"[{tool_id}]"
+            body = (answer or "").strip()
+            parts.append(f"{label}\n{body}".strip())
+        answer = "\n\n".join(parts)
+        step_plan = StepPlan(
+            step_index=1,
+            template="FAN_OUT",
+            tool_ids=tool_ids,
+            questions=[query],
+            rationale_codes=["R_PLAN_FAN_OUT"],
+        )
+        status = "EMPTY" if not evidence else ("SUCCESS" if len(evidence) >= profile.limits.evidence_min else "PARTIAL")
+        self._emit(event_handler, {"type": "step_completed", "step_index": 1})
+        return ExecutionResult(
+            answer,
+            evidence,
+            steps,
+            status,
+            step_plans=[step_plan],
+        )
+
+    def _execute_distributed(
+        self,
+        plan_skeleton: PlanSkeleton,
+        query: str,
+        profile: Profile,
+        tools: Dict[str, ToolEntry],
+        event_handler: Callable[[dict], None] | None,
+    ) -> ExecutionResult:
+        tool_ids = [
+            tool_id
+            for tool_id in (plan_skeleton.candidate_tools or profile.enabled_tools)
+            if tool_id in tools
+        ]
+        if not tool_ids:
+            return ExecutionResult("", [], [], "EMPTY")
+        steps: List[StepRecord] = []
+        evidence: List[Evidence] = []
+        tool_answers: List[tuple[str, str]] = []
+        self._emit(
+            event_handler,
+            {
+                "type": "step_started",
+                "step_index": 1,
+                "tool_ids": tool_ids,
+                "questions": [query],
+            },
+        )
+        with ThreadPoolExecutor(max_workers=min(12, len(tool_ids)) or 1) as pool:
+            futures = {}
+            for tool_id in tool_ids:
+                tool = tools.get(tool_id)
+                if not tool:
+                    continue
+                self._emit(event_handler, {"type": "tool_started", "step_index": 1, "tool_id": tool_id})
+                futures[tool_id] = pool.submit(self._executor.call_tool, tool, query)
+            for tool_id, future in futures.items():
+                answer, step_evidence, step_record = future.result()
+                step_record.input_summary["step_index"] = 1
+                step_record.input_summary["query_index"] = 1
+                step_record.step_id = f"1:{tool_id}:1"
+                steps.append(step_record)
+                evidence.extend(step_evidence)
+                tool_answers.append((tool_id, answer))
+                self._emit(
+                    event_handler,
+                    {
+                        "type": "tool_completed",
+                        "step_index": 1,
+                        "tool_id": tool_id,
+                        "duration_ms": step_record.duration_ms,
+                        "error_code": step_record.error_code,
+                    },
+                )
+        self._emit(event_handler, {"type": "composing_started"})
+        answer = self._executor.compose_multi(query, tool_answers, evidence)
+        self._emit(event_handler, {"type": "composing_completed"})
+        step_plan = StepPlan(
+            step_index=1,
+            template="DISTRIBUTED",
+            tool_ids=tool_ids,
+            questions=[query],
+            rationale_codes=["R_PLAN_DISTRIBUTED"],
+        )
+        status = "EMPTY" if not evidence else ("SUCCESS" if len(evidence) >= profile.limits.evidence_min else "PARTIAL")
+        self._emit(event_handler, {"type": "step_completed", "step_index": 1})
+        return ExecutionResult(
+            answer,
+            evidence,
+            steps,
+            status,
+            step_plans=[step_plan],
+        )
 
     def _execute_dynamic(
         self,

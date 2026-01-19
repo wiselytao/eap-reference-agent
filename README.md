@@ -58,6 +58,10 @@ Rate limiting:
 Trace configuration:
 - `audit.enabled: true|false` to enable/disable trace file output
 
+Execution plan prefixes (prepend to the user query):
+- `DISTRIBUTED:` / `DISTRI:` to run a distributed plan (parallel tools, merged answer)
+- `FAN-OUT:` / `FANOUT:` to run a fan-out plan (parallel tools, answers listed by tool)
+
 Environment tools (optional):
 - `TOOL_<id>_BASE_URL` + `TOOL_<id>_KEY` + `TOOL_<id>_RAG` (VECTOR/GRAPH/HYBRID/HYBRIDCOT) will be loaded automatically.
   If a profile uses `enabled_tools: ["*"]` and env tools exist, only env tools are enabled.

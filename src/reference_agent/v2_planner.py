@@ -21,6 +21,13 @@ class BoundedPlanner:
     def build(
         self, query: str, profile: Profile, tools: Dict[str, ToolEntry], context: Dict | None = None
     ) -> PlanExecution:
+        if context and context.get("execution_plan") in {"DISTRIBUTED", "FAN_OUT"}:
+            plan = context["execution_plan"]
+            return PlanExecution(
+                template=plan,
+                steps=[PlanStep(step_id="1", template=plan)],
+                notes=f"Execution plan override: {plan}",
+            )
         return PlanExecution(
             template="DYNAMIC",
             steps=[PlanStep(step_id="1", template="DYNAMIC")],
