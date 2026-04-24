@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.1
+
+### Added
+- Added an Admin Web UI design spec covering service control, configuration management, logs and audit views, system information, and embedded documentation.
+
+## v4.0
+
+### Changed
+- Reset major version to v4.0.
+
 ## v3.24
 
 ### Changed
