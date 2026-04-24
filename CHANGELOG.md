@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.2
+
+### Added
+- Added a detailed Admin Web UI implementation plan covering admin routing, system info, service control, configuration editing, trace/log views, docs rendering, and release steps.
+
 ## v4.1
 
 ### Added
