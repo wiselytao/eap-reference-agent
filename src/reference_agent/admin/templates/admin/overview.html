@@ -4,8 +4,17 @@
 <section class="admin-panel">
   <h2>Overview</h2>
   <p>
-    This admin surface establishes the routing, shared navigation, and static
-    asset pipeline for later operational pages.
+    This admin surface provides a read-only runtime snapshot for the current
+    Reference Agent deployment.
   </p>
+</section>
+<section class="admin-panel">
+  <h2>Runtime Summary</h2>
+  <dl>
+    {% for item in overview.summary_items %}
+    <dt>{{ item.label }}</dt>
+    <dd>{{ item.value }}</dd>
+    {% endfor %}
+  </dl>
 </section>
 {% endblock %}

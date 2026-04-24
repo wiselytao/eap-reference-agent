@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<section class="admin-panel">
+  <h2>System Info</h2>
+  <p>
+    Read-only environment and routing details for the current application
+    process.
+  </p>
+</section>
+<section class="admin-panel">
+  <h2>Paths</h2>
+  <dl>
+    {% for item in system_info.path_items %}
+    <dt>{{ item.label }}</dt>
+    <dd>{{ item.value }}</dd>
+    {% endfor %}
+  </dl>
+</section>
+<section class="admin-panel">
+  <h2>Routes</h2>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Path</th>
+        <th scope="col">Methods</th>
+        <th scope="col">Name</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in system_info.route_items %}
+      <tr>
+        <td>{{ item.path }}</td>
+        <td>{{ item.methods | join(", ") }}</td>
+        <td>{{ item.name }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

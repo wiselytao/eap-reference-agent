@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.5
+
+### Added
+- Added admin overview runtime summary cards and a read-only `System Info` page that lists app routes plus configured config, tools, and profiles locations.
+
 ## v4.4
 
 ### Changed
