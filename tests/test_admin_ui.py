@@ -95,10 +95,10 @@ async def test_admin_service_control_status_endpoint_returns_json(temp_config, m
     status_model = {
         "pid": 9876,
         "running": True,
-        "healthy": False,
+        "healthy": True,
         "pid_file": str(temp_config / "ra.pid"),
         "log_file": str(temp_config / "ra.log"),
-        "status_summary": "Running but unhealthy",
+        "status_summary": "Running and healthy",
         "available_actions": ["start", "stop", "restart"],
     }
 
@@ -116,12 +116,15 @@ async def test_admin_service_control_status_endpoint_returns_json(temp_config, m
 
 @pytest.mark.asyncio
 async def test_admin_service_control_actions_write_audit_records(temp_config, monkeypatch):
+    from reference_agent.admin import process_control
     from reference_agent.admin import routes
 
     calls: list[str] = []
 
-    def fake_status():
-        return {
+    monkeypatch.setattr(
+        routes,
+        "build_service_control_read_model",
+        lambda: {
             "pid": 2468,
             "running": True,
             "healthy": True,
@@ -129,19 +132,14 @@ async def test_admin_service_control_actions_write_audit_records(temp_config, mo
             "log_file": str(temp_config / "ra.log"),
             "status_summary": "Running and healthy",
             "available_actions": ["start", "stop", "restart"],
-        }
+        },
+    )
 
-    def fake_start():
-        calls.append("start")
-        return {"message": "started"}
+    def fake_run_script(script_path):
+        calls.append(script_path.name)
+        return {"message": f"{script_path.name} finished", "script": str(script_path)}
 
-    def fake_stop():
-        calls.append("stop")
-        return {"message": "stopped"}
-
-    monkeypatch.setattr(routes, "build_service_control_read_model", fake_status)
-    monkeypatch.setattr(routes, "start_service", fake_start)
-    monkeypatch.setattr(routes, "stop_service", fake_stop)
+    monkeypatch.setattr(process_control, "_run_script", fake_run_script)
 
     app = create_app()
     transport = httpx.ASGITransport(app=app)
@@ -152,9 +150,9 @@ async def test_admin_service_control_actions_write_audit_records(temp_config, mo
 
     assert start_response.status_code == 200
     assert stop_response.status_code == 200
-    assert start_response.json()["result"]["message"] == "started"
-    assert stop_response.json()["result"]["message"] == "stopped"
-    assert calls == ["start", "stop"]
+    assert start_response.json()["result"]["message"] == "start.sh finished"
+    assert stop_response.json()["result"]["message"] == "stop.sh finished"
+    assert calls == ["start.sh", "stop.sh"]
 
     audit_log = temp_config / "traces" / "admin_actions.jsonl"
     records = [json.loads(line) for line in audit_log.read_text().splitlines()]
@@ -166,12 +164,15 @@ async def test_admin_service_control_actions_write_audit_records(temp_config, mo
 
 @pytest.mark.asyncio
 async def test_admin_service_control_restart_is_detached_and_audited(temp_config, monkeypatch):
+    from reference_agent.admin import process_control
     from reference_agent.admin import routes
 
-    calls: list[str] = []
+    popen_calls: list[tuple[object, dict[str, object]]] = []
 
-    def fake_status():
-        return {
+    monkeypatch.setattr(
+        routes,
+        "build_service_control_read_model",
+        lambda: {
             "pid": None,
             "running": False,
             "healthy": False,
@@ -179,14 +180,17 @@ async def test_admin_service_control_restart_is_detached_and_audited(temp_config
             "log_file": str(temp_config / "ra.log"),
             "status_summary": "Stopped",
             "available_actions": ["start", "stop", "restart"],
-        }
+        },
+    )
+    monkeypatch.setattr(process_control, "repo_root", lambda: process_control.Path("/repo"))
+    monkeypatch.setattr(process_control, "start_script_path", lambda: process_control.Path("/repo/scripts/start.sh"))
+    monkeypatch.setattr(process_control, "stop_script_path", lambda: process_control.Path("/repo/scripts/stop.sh"))
 
-    def fake_schedule_restart():
-        calls.append("restart")
-        return {"message": "restart scheduled", "poll_url": "/admin/service-control/status"}
+    def fake_popen(args, **kwargs):
+        popen_calls.append((args, kwargs))
+        return object()
 
-    monkeypatch.setattr(routes, "build_service_control_read_model", fake_status)
-    monkeypatch.setattr(routes, "schedule_restart", fake_schedule_restart)
+    monkeypatch.setattr(process_control.subprocess, "Popen", fake_popen)
 
     app = create_app()
     transport = httpx.ASGITransport(app=app)
@@ -199,11 +203,56 @@ async def test_admin_service_control_restart_is_detached_and_audited(temp_config
     assert body["result"]["message"] == "restart scheduled"
     assert body["poll_url"] == "/admin/service-control/status"
     assert body["detached"] is True
-    assert calls == ["restart"]
+    assert len(popen_calls) == 1
+    command = popen_calls[0][0][2]
+    assert "sleep" in command
+    assert command.index("sleep") < command.index("/repo/scripts/stop.sh")
+    assert command.index("/repo/scripts/stop.sh") < command.index("/repo/scripts/start.sh")
 
     audit_log = temp_config / "traces" / "admin_actions.jsonl"
     records = [json.loads(line) for line in audit_log.read_text().splitlines()]
     assert records[-1]["action"] == "restart"
+
+
+@pytest.mark.asyncio
+async def test_admin_service_control_action_audits_unexpected_failures(temp_config, monkeypatch):
+    from reference_agent.admin import process_control
+    from reference_agent.admin import routes
+
+    monkeypatch.setattr(
+        routes,
+        "build_service_control_read_model",
+        lambda: {
+            "pid": None,
+            "running": False,
+            "healthy": False,
+            "pid_file": str(temp_config / "ra.pid"),
+            "log_file": str(temp_config / "ra.log"),
+            "status_summary": "Stopped",
+            "available_actions": ["start", "stop", "restart"],
+        },
+    )
+
+    def fake_run_script(script_path):
+        raise FileNotFoundError(f"missing script: {script_path}")
+
+    monkeypatch.setattr(process_control, "_run_script", fake_run_script)
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/admin/service-control/actions/start")
+
+    assert response.status_code == 500
+    assert "Service control action failed." in response.text
+
+    audit_log = temp_config / "traces" / "admin_actions.jsonl"
+    records = [json.loads(line) for line in audit_log.read_text().splitlines()]
+    assert records[-1]["action"] == "start"
+    assert records[-1]["outcome"] == "error"
+    assert records[-1]["details"]["error_type"] == "FileNotFoundError"
+    assert "missing script" in records[-1]["details"]["message"]
 
 
 @pytest.mark.asyncio

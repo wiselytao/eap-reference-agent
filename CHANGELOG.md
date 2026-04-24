@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.7
+
+### Changed
+- Hardened admin service control with a grace-delayed detached restart dispatch, broader failure auditing for mutating actions, side-effect-free status reads, and stronger subprocess-boundary tests.
+
 ## v4.6
 
 ### Added

@@ -94,15 +94,17 @@ async def service_control_action(request: Request, action_name: str) -> JSONResp
     handler, status_code, detached = handler_meta
     try:
         result = handler()
-    except ProcessControlError as exc:
+    except Exception as exc:
         append_admin_action_audit(
             request,
             action=action_name,
             target="service-control",
             outcome="error",
-            details={"message": str(exc)},
+            details={"error_type": type(exc).__name__, "message": str(exc)},
         )
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        if isinstance(exc, ProcessControlError):
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Service control action failed.") from exc
 
     append_admin_action_audit(
         request,

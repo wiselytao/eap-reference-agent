@@ -11,14 +11,15 @@ class ProcessControlError(RuntimeError):
     pass
 
 
+RESTART_DISPATCH_DELAY_SECONDS = 2
+RESTART_START_DELAY_SECONDS = 1
+
+
 def build_service_control_read_model() -> dict[str, Any]:
     pid_file = pid_file_path()
     log_file = log_file_path()
     pid = read_pid(pid_file)
     running = pid is not None and is_process_running(pid)
-    if pid is not None and not running and pid_file.exists():
-        pid_file.unlink()
-        pid = None
     healthy = running
     return {
         "pid": pid,
@@ -42,8 +43,9 @@ def stop_service() -> dict[str, Any]:
 def schedule_restart() -> dict[str, Any]:
     command = " && ".join(
         [
+            f"sleep {RESTART_DISPATCH_DELAY_SECONDS}",
             shlex.quote(str(stop_script_path())),
-            "sleep 1",
+            f"sleep {RESTART_START_DELAY_SECONDS}",
             shlex.quote(str(start_script_path())),
         ]
     )
