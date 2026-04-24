@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_title }}</title>
+    <link rel="stylesheet" href="/admin/static/admin.css" />
+  </head>
+  <body data-admin-page="{{ page_heading | lower | replace(' ', '-') }}">
+    <div class="admin-shell">
+      <aside class="admin-sidebar">
+        <p class="admin-eyebrow">Reference Agent Admin</p>
+        <nav aria-label="Admin navigation">
+          <ul class="admin-nav">
+            {% for item in nav_links %}
+            <li>
+              <a
+                href="{{ item.href }}"
+                class="admin-nav-link{% if request.url.path == item.href %} is-active{% endif %}"
+              >
+                {{ item.label }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </nav>
+      </aside>
+      <main class="admin-content">
+        <header class="admin-header">
+          <h1>Reference Agent Admin</h1>
+          <p>{{ page_heading }}</p>
+        </header>
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    <script src="/admin/static/admin.js"></script>
+  </body>
+</html>

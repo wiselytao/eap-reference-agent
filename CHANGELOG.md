@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.3
+
+### Added
+- Added the initial admin web UI foundation with a server-rendered `/admin` overview page, shared navigation links, and `/admin/static` asset mounting for future admin pages.
+
 ## v4.2
 
 ### Added

@@ -10,8 +10,10 @@ from typing import Any, Iterable, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from reference_agent.admin import admin_router, admin_static_dir
 from reference_agent.models import AskRequest, AskResponse, ProfilingRunRequest, ValidateRequest
 from reference_agent.service import ReferenceAgentService
 
@@ -27,6 +29,9 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Reference Agent", version="1.0")
     service = build_service()
     logger = logging.getLogger("uvicorn.error")
+
+    app.mount("/admin/static", StaticFiles(directory=admin_static_dir), name="admin-static")
+    app.include_router(admin_router)
 
     @app.middleware("http")
     async def bearer_auth(request: Request, call_next):
