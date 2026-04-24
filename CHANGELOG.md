@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.4
+
+### Changed
+- Moved the admin UI templates and static assets into the `reference_agent.admin` package for installed-environment loading and centralized the shared test fixture in `tests/conftest.py`.
+
 ## v4.3
 
 ### Added

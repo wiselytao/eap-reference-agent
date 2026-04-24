@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from pathlib import Path
+from importlib.resources import files
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-repo_root = Path(__file__).resolve().parents[3]
-templates = Jinja2Templates(directory=str(repo_root / "templates"))
-admin_static_dir = repo_root / "static"
+admin_package = files("reference_agent.admin")
+templates = Jinja2Templates(directory=str(admin_package.joinpath("templates")))
+admin_static_dir = admin_package.joinpath("static")
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
 
