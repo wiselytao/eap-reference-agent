@@ -5,7 +5,7 @@ import pytest
 from reference_agent.admin import process_control
 
 
-def test_schedule_restart_spawns_detached_command_with_initial_grace_delay(monkeypatch):
+def test_schedule_restart_spawns_detached_command(monkeypatch):
     captured: dict[str, object] = {}
 
     def fake_popen(args, **kwargs):
@@ -26,9 +26,9 @@ def test_schedule_restart_spawns_detached_command_with_initial_grace_delay(monke
     }
     assert captured["args"][0:2] == ["/bin/bash", "-lc"]
     command = captured["args"][2]
-    assert "sleep" in command
-    assert command.index("sleep") < command.index("/repo/scripts/stop.sh")
+    assert command.index("/repo/scripts/stop.sh") < command.index("sleep")
     assert command.index("/repo/scripts/stop.sh") < command.index("/repo/scripts/start.sh")
+    assert command.index("sleep") < command.index("/repo/scripts/start.sh")
     assert captured["kwargs"]["cwd"] == process_control.Path("/repo")
     assert captured["kwargs"]["start_new_session"] is True
     assert captured["kwargs"]["stdout"] is subprocess.DEVNULL

@@ -18,6 +18,7 @@ def append_admin_action_audit(
     target: str,
     outcome: str,
     details: dict[str, Any] | None = None,
+    remote_addr_override: str | None = None,
 ) -> Path:
     record = {
         "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -25,7 +26,7 @@ def append_admin_action_audit(
         "target": target,
         "action": action,
         "outcome": outcome,
-        "remote_addr": _remote_addr(request),
+        "remote_addr": remote_addr_override if remote_addr_override is not None else _remote_addr(request),
         "details": details or {},
     }
     audit_path = _admin_audit_log_path()

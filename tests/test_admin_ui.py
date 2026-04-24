@@ -3,6 +3,7 @@ import json
 
 import httpx
 import pytest
+from starlette.requests import Request
 
 from reference_agent.app import create_app
 
@@ -163,7 +164,77 @@ async def test_admin_service_control_actions_write_audit_records(temp_config, mo
 
 
 @pytest.mark.asyncio
-async def test_admin_service_control_restart_is_detached_and_audited(temp_config, monkeypatch):
+async def test_admin_service_control_restart_queues_background_task(temp_config, monkeypatch):
+    from reference_agent.admin import routes
+
+    scheduled_calls: list[str] = []
+
+    class FakeBackgroundTasks:
+        def __init__(self):
+            self.tasks: list[tuple[object, tuple[object, ...], dict[str, object]]] = []
+
+        def add_task(self, func, *args, **kwargs):
+            self.tasks.append((func, args, kwargs))
+
+    monkeypatch.setattr(
+        routes,
+        "build_service_control_read_model",
+        lambda: {
+            "pid": None,
+            "running": False,
+            "healthy": False,
+            "pid_file": str(temp_config / "ra.pid"),
+            "log_file": str(temp_config / "ra.log"),
+            "status_summary": "Stopped",
+            "available_actions": ["start", "stop", "restart"],
+        },
+    )
+
+    def fake_schedule_restart():
+        scheduled_calls.append("scheduled")
+        return {"message": "restart scheduled", "poll_url": "/admin/service-control/status"}
+
+    monkeypatch.setattr(routes, "schedule_restart", fake_schedule_restart)
+
+    background_tasks = FakeBackgroundTasks()
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/admin/service-control/actions/restart",
+            "headers": [],
+            "client": ("127.0.0.1", 12345),
+            "scheme": "http",
+            "server": ("testserver", 80),
+        }
+    )
+
+    response = await routes.service_control_action(
+        request, "restart", background_tasks=background_tasks
+    )
+
+    assert response.status_code == 202
+    body = json.loads(response.body)
+    assert body["result"]["message"] == "restart scheduled"
+    assert body["poll_url"] == "/admin/service-control/status"
+    assert body["detached"] is True
+    assert scheduled_calls == []
+    assert len(background_tasks.tasks) == 1
+
+    task_func, task_args, task_kwargs = background_tasks.tasks[0]
+    assert task_args == ("127.0.0.1",)
+    assert task_kwargs == {}
+
+    task_func(*task_args, **task_kwargs)
+    assert scheduled_calls == ["scheduled"]
+
+    audit_log = temp_config / "traces" / "admin_actions.jsonl"
+    records = [json.loads(line) for line in audit_log.read_text().splitlines()]
+    assert records[-1]["action"] == "restart"
+
+
+@pytest.mark.asyncio
+async def test_admin_service_control_restart_response_triggers_background_spawn(temp_config, monkeypatch):
     from reference_agent.admin import process_control
     from reference_agent.admin import routes
 
@@ -205,9 +276,9 @@ async def test_admin_service_control_restart_is_detached_and_audited(temp_config
     assert body["detached"] is True
     assert len(popen_calls) == 1
     command = popen_calls[0][0][2]
-    assert "sleep" in command
-    assert command.index("sleep") < command.index("/repo/scripts/stop.sh")
     assert command.index("/repo/scripts/stop.sh") < command.index("/repo/scripts/start.sh")
+    assert command.index("/repo/scripts/stop.sh") < command.index("sleep")
+    assert command.index("sleep") < command.index("/repo/scripts/start.sh")
 
     audit_log = temp_config / "traces" / "admin_actions.jsonl"
     records = [json.loads(line) for line in audit_log.read_text().splitlines()]

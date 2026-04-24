@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from importlib.resources import files
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
@@ -82,12 +82,27 @@ async def service_control_status() -> dict[str, object]:
 
 
 @admin_router.post("/service-control/actions/{action_name}")
-async def service_control_action(request: Request, action_name: str) -> JSONResponse:
+async def service_control_action(
+    request: Request, action_name: str, background_tasks: BackgroundTasks
+) -> JSONResponse:
     action_handlers = {
         "start": (start_service, 200, False),
         "stop": (stop_service, 200, False),
-        "restart": (schedule_restart, 202, True),
     }
+    if action_name == "restart":
+        background_tasks.add_task(_spawn_restart_with_audit, _request_remote_addr(request))
+        payload = {
+            "action": action_name,
+            "result": {
+                "message": "restart scheduled",
+                "poll_url": "/admin/service-control/status",
+            },
+            "status": build_service_control_read_model(),
+            "detached": True,
+            "poll_url": "/admin/service-control/status",
+        }
+        return JSONResponse(payload, status_code=202)
+
     handler_meta = action_handlers.get(action_name)
     if handler_meta is None:
         raise HTTPException(status_code=404, detail="Unknown admin action")
@@ -122,3 +137,33 @@ async def service_control_action(request: Request, action_name: str) -> JSONResp
         payload["detached"] = True
         payload["poll_url"] = str(result.get("poll_url", "/admin/service-control/status"))
     return JSONResponse(payload, status_code=status_code)
+
+
+def _spawn_restart_with_audit(remote_addr: str | None) -> None:
+    try:
+        result = schedule_restart()
+    except Exception as exc:
+        append_admin_action_audit(
+            None,
+            action="restart",
+            target="service-control",
+            outcome="error",
+            details={"error_type": type(exc).__name__, "message": str(exc)},
+            remote_addr_override=remote_addr,
+        )
+        return
+
+    append_admin_action_audit(
+        None,
+        action="restart",
+        target="service-control",
+        outcome="success",
+        details=result,
+        remote_addr_override=remote_addr,
+    )
+
+
+def _request_remote_addr(request: Request) -> str | None:
+    if request.client is None:
+        return None
+    return request.client.host

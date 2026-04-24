@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.8
+
+### Changed
+- Moved admin restart scheduling onto a post-response background task so detached restart spawning is lifecycle-driven instead of relying on a pre-stop timing delay.
+
 ## v4.7
 
 ### Changed

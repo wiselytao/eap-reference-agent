@@ -11,7 +11,6 @@ class ProcessControlError(RuntimeError):
     pass
 
 
-RESTART_DISPATCH_DELAY_SECONDS = 2
 RESTART_START_DELAY_SECONDS = 1
 
 
@@ -43,7 +42,6 @@ def stop_service() -> dict[str, Any]:
 def schedule_restart() -> dict[str, Any]:
     command = " && ".join(
         [
-            f"sleep {RESTART_DISPATCH_DELAY_SECONDS}",
             shlex.quote(str(stop_script_path())),
             f"sleep {RESTART_START_DELAY_SECONDS}",
             shlex.quote(str(start_script_path())),
