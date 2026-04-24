@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.6
+
+### Added
+- Added an admin `Service Control` page with live status polling, start/stop actions backed by the existing service scripts, detached restart scheduling, and append-only admin action audit records.
+
 ## v4.5
 
 ### Added

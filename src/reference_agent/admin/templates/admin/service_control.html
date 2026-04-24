@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<section class="admin-panel" data-admin-service-control="true">
+  <h2>Service Control</h2>
+  <p>
+    Start, stop, or schedule a detached restart for the Reference Agent
+    service. Restart returns immediately and the page polls for status changes.
+  </p>
+  <p data-admin-feedback hidden></p>
+</section>
+
+<section class="admin-panel">
+  <h2>Current Status</h2>
+  <dl>
+    <dt>PID</dt>
+    <dd data-admin-status-field="pid">{{ service_status.pid if service_status.pid is not none else "Not running" }}</dd>
+    <dt>Running</dt>
+    <dd data-admin-status-field="running">{{ service_status.running | string | lower }}</dd>
+    <dt>Healthy</dt>
+    <dd data-admin-status-field="healthy">{{ service_status.healthy | string | lower }}</dd>
+    <dt>Status</dt>
+    <dd data-admin-status-field="status_summary">{{ service_status.status_summary }}</dd>
+    <dt>PID File</dt>
+    <dd data-admin-status-field="pid_file">{{ service_status.pid_file }}</dd>
+    <dt>Log File</dt>
+    <dd data-admin-status-field="log_file">{{ service_status.log_file }}</dd>
+  </dl>
+</section>
+
+<section class="admin-panel">
+  <h2>Actions</h2>
+  <div>
+    {% for action in service_status.available_actions %}
+    <form action="/admin/service-control/actions/{{ action }}" method="post" data-admin-action-form>
+      <button type="submit" data-admin-action="{{ action }}">{{ action | capitalize }}</button>
+    </form>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

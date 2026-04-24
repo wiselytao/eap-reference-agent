@@ -2,10 +2,18 @@ from __future__ import annotations
 
 from importlib.resources import files
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+from reference_agent.admin.audit import append_admin_action_audit
+from reference_agent.admin.process_control import (
+    ProcessControlError,
+    build_service_control_read_model,
+    schedule_restart,
+    start_service,
+    stop_service,
+)
 from reference_agent.admin.system_info import (
     build_overview_read_model,
     build_system_info_read_model,
@@ -52,3 +60,63 @@ async def system_info(request: Request) -> HTMLResponse:
             "system_info": build_system_info_read_model(request.app.routes),
         },
     )
+
+
+@admin_router.get("/service-control", response_class=HTMLResponse)
+async def service_control(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "admin/service_control.html",
+        {
+            "page_title": "Reference Agent Admin",
+            "page_heading": "Service Control",
+            "nav_links": nav_links,
+            "service_status": build_service_control_read_model(),
+        },
+    )
+
+
+@admin_router.get("/service-control/status")
+async def service_control_status() -> dict[str, object]:
+    return build_service_control_read_model()
+
+
+@admin_router.post("/service-control/actions/{action_name}")
+async def service_control_action(request: Request, action_name: str) -> JSONResponse:
+    action_handlers = {
+        "start": (start_service, 200, False),
+        "stop": (stop_service, 200, False),
+        "restart": (schedule_restart, 202, True),
+    }
+    handler_meta = action_handlers.get(action_name)
+    if handler_meta is None:
+        raise HTTPException(status_code=404, detail="Unknown admin action")
+    handler, status_code, detached = handler_meta
+    try:
+        result = handler()
+    except ProcessControlError as exc:
+        append_admin_action_audit(
+            request,
+            action=action_name,
+            target="service-control",
+            outcome="error",
+            details={"message": str(exc)},
+        )
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    append_admin_action_audit(
+        request,
+        action=action_name,
+        target="service-control",
+        outcome="success",
+        details=result,
+    )
+    payload = {
+        "action": action_name,
+        "result": result,
+        "status": build_service_control_read_model(),
+    }
+    if detached:
+        payload["detached"] = True
+        payload["poll_url"] = str(result.get("poll_url", "/admin/service-control/status"))
+    return JSONResponse(payload, status_code=status_code)
