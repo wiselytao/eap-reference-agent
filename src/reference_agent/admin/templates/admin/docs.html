@@ -1,0 +1,40 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<section class="admin-panel">
+  <h2>Docs</h2>
+  <p>
+    Browse allowlisted repository documentation rendered from package-side admin
+    views. Document reads are limited to known markdown files in the repo.
+  </p>
+</section>
+
+<section class="admin-docs-layout">
+  <aside class="admin-panel">
+    <h2>Available Docs</h2>
+    <ul class="admin-doc-list">
+      {% for item in docs_model.available_docs %}
+      <li>
+        <a
+          href="{{ item.href }}"
+          class="admin-doc-link{% if item.is_selected %} is-active{% endif %}"
+        >
+          {{ item.name }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </aside>
+
+  <article class="admin-panel admin-doc-article">
+    {% if docs_model.error %}
+    <h2>Unavailable</h2>
+    <p>{{ docs_model.error }}</p>
+    {% elif docs_model.selected_doc %}
+    <h2>{{ docs_model.selected_doc.name }}</h2>
+    <p class="admin-muted">{{ docs_model.selected_doc.path }}</p>
+    <div class="admin-markdown">{{ docs_model.selected_doc.html | safe }}</div>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

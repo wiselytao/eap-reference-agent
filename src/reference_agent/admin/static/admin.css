@@ -76,6 +76,10 @@ body {
   line-height: 1.6;
 }
 
+.admin-muted {
+  color: #52607a;
+}
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -165,6 +169,153 @@ body {
   color: #edf2ff;
 }
 
+.admin-definition-list {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) 1fr;
+  gap: 10px 16px;
+}
+
+.admin-definition-list dt {
+  font-weight: 700;
+  color: #172033;
+}
+
+.admin-definition-list dd {
+  margin: 0;
+}
+
+.admin-grid-two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.admin-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-subsection {
+  padding: 16px;
+  border: 1px solid #d7deeb;
+  border-radius: 12px;
+  background: #fbfcff;
+}
+
+.admin-inline-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.admin-timeline {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding-left: 24px;
+}
+
+.admin-timeline-item {
+  padding: 18px;
+  border: 1px solid #d7deeb;
+  border-radius: 14px;
+  background: #fbfcff;
+}
+
+.admin-timeline-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.admin-step-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.admin-badge-ok {
+  background: #e6f7ed;
+  color: #14532d;
+}
+
+.admin-badge-warn {
+  background: #fff4d6;
+  color: #8a5700;
+}
+
+.admin-badge-error {
+  background: #fde8e8;
+  color: #9b1c1c;
+}
+
+.admin-docs-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 24px;
+  align-items: start;
+  margin-top: 24px;
+}
+
+.admin-doc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-doc-link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #172033;
+  text-decoration: none;
+}
+
+.admin-doc-link:hover,
+.admin-doc-link.is-active {
+  background: #eef3ff;
+}
+
+.admin-doc-article {
+  min-width: 0;
+}
+
+.admin-markdown {
+  line-height: 1.7;
+}
+
+.admin-markdown h1,
+.admin-markdown h2,
+.admin-markdown h3,
+.admin-markdown h4 {
+  margin-top: 1.5em;
+  margin-bottom: 0.6em;
+}
+
+.admin-markdown p,
+.admin-markdown ul,
+.admin-markdown ol,
+.admin-markdown pre {
+  margin: 0 0 1em;
+}
+
+.admin-markdown code {
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+  background: #eef3ff;
+}
+
 @media (max-width: 800px) {
   .admin-shell {
     grid-template-columns: 1fr;
@@ -172,5 +323,17 @@ body {
 
   .admin-content {
     padding: 24px 16px 32px;
+  }
+
+  .admin-docs-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-timeline-header {
+    flex-direction: column;
+  }
+
+  .admin-step-meta {
+    justify-content: flex-start;
   }
 }

@@ -1,0 +1,240 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+{% if trace_detail %}
+<section class="admin-panel">
+  <p><a href="/admin/logs">Back to logs</a></p>
+  <h2>Trace Timeline</h2>
+  <p>
+    Trace <strong>{{ trace_detail.trace_id }}</strong> for profile
+    <strong>{{ trace_detail.profile_id }}</strong> ({{ trace_detail.profile_version }})
+    finished with <strong>{{ trace_detail.final_status }}</strong>.
+  </p>
+  <dl class="admin-definition-list">
+    <dt>Steps</dt>
+    <dd>{{ trace_detail.step_count }}</dd>
+    <dt>Evidence</dt>
+    <dd>{{ trace_detail.evidence_count }}</dd>
+    <dt>Final Reasons</dt>
+    <dd>{{ trace_detail.final_status_reasons | join(", ") if trace_detail.final_status_reasons else "None" }}</dd>
+  </dl>
+</section>
+
+<section class="admin-panel">
+  <h2>Routing Summary</h2>
+  <dl class="admin-definition-list">
+    <dt>Strategy</dt>
+    <dd>{{ trace_detail.routing_summary.strategy_id }}</dd>
+    <dt>Intent</dt>
+    <dd>{{ trace_detail.routing_summary.intent_detected or "Not detected" }}</dd>
+    <dt>Candidate Strategies</dt>
+    <dd>{{ trace_detail.routing_summary.candidate_strategies | join(", ") if trace_detail.routing_summary.candidate_strategies else "None" }}</dd>
+    <dt>Rationale Codes</dt>
+    <dd>{{ trace_detail.routing_summary.rationale_codes | join(", ") if trace_detail.routing_summary.rationale_codes else "None" }}</dd>
+    <dt>Selected Tools</dt>
+    <dd>
+      {% if trace_detail.routing_summary.selected_tools %}
+      <ul class="admin-inline-list">
+        {% for item in trace_detail.routing_summary.selected_tools %}
+        <li>{{ item.tool_id }}{% if item.reason %}: {{ item.reason }}{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      None
+      {% endif %}
+    </dd>
+  </dl>
+  <div class="admin-grid-two">
+    <div>
+      <h3>Bindings</h3>
+      <dl class="admin-definition-list">
+        <dt>Required</dt>
+        <dd>{{ trace_detail.routing_summary.binding_readiness.required | join(", ") if trace_detail.routing_summary.binding_readiness.required else "None" }}</dd>
+        <dt>Provided</dt>
+        <dd>{{ trace_detail.routing_summary.binding_readiness.provided | join(", ") if trace_detail.routing_summary.binding_readiness.provided else "None" }}</dd>
+        <dt>Missing</dt>
+        <dd>{{ trace_detail.routing_summary.binding_readiness.missing | join(", ") if trace_detail.routing_summary.binding_readiness.missing else "None" }}</dd>
+      </dl>
+    </div>
+    <div>
+      <h3>Router Params</h3>
+      <pre class="admin-code-block">{{ trace_detail.routing_summary.params_json }}</pre>
+    </div>
+  </div>
+</section>
+
+<section class="admin-panel">
+  <h2>Trace Timeline</h2>
+  <ol class="admin-timeline">
+    {% for item in trace_detail.timeline %}
+    <li class="admin-timeline-item">
+      <div class="admin-timeline-header">
+        <div>
+          <strong>{{ item.step_id }}</strong>
+          <div class="admin-muted">{{ item.headline }}</div>
+        </div>
+        <div class="admin-step-meta">
+          <span>{{ item.tool_id or "No tool" }}</span>
+          <span>{{ item.duration_ms if item.duration_ms is not none else "n/a" }} ms</span>
+          {% if item.error_code %}
+          <span class="admin-badge admin-badge-error">{{ item.error_code }}</span>
+          {% elif item.degraded %}
+          <span class="admin-badge admin-badge-warn">degraded</span>
+          {% else %}
+          <span class="admin-badge admin-badge-ok">ok</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="admin-grid-two">
+        <div>
+          <h3>Input Summary</h3>
+          <pre class="admin-code-block">{{ item.input_summary_json }}</pre>
+        </div>
+        <div>
+          <h3>Output Summary</h3>
+          <pre class="admin-code-block">{{ item.output_summary_json }}</pre>
+        </div>
+      </div>
+      {% if item.step_plan %}
+      <p class="admin-muted">
+        Planned with <strong>{{ item.step_plan.template }}</strong>
+        {% if item.step_plan.questions %}for {{ item.step_plan.questions | join("; ") }}{% endif %}
+      </p>
+      {% endif %}
+      {% if item.evaluation %}
+      <div class="admin-subsection">
+        <h3>Evaluation</h3>
+        <p>
+          coverage_complete={{ item.evaluation.coverage_complete }},
+          evidence_count={{ item.evaluation.evidence_count }},
+          should_continue={{ item.evaluation.should_continue }}
+        </p>
+        <p>
+          Covered: {{ item.evaluation.covered_items | join(", ") if item.evaluation.covered_items else "None" }}
+          | Missing: {{ item.evaluation.missing_items | join(", ") if item.evaluation.missing_items else "None" }}
+        </p>
+        {% if item.evaluation.notes %}
+        <p>{{ item.evaluation.notes }}</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+<section class="admin-panel">
+  <h2>Evidence</h2>
+  {% if trace_detail.evidence %}
+  <div class="admin-stack">
+    {% for item in trace_detail.evidence %}
+    <article class="admin-subsection">
+      <h3>{{ item.tool_id }} · {{ item.source_type }}</h3>
+      <p>
+        Source: <strong>{{ item.source_id }}</strong>
+        {% if item.confidence is not none %}| Confidence: {{ item.confidence }}{% endif %}
+      </p>
+      <p>{{ item.snippet or "No snippet available." }}</p>
+      <div class="admin-grid-two">
+        <div>
+          <h4>Locator</h4>
+          <pre class="admin-code-block">{{ item.locator_json }}</pre>
+        </div>
+        <div>
+          <h4>Retrieval Meta</h4>
+          <pre class="admin-code-block">{{ item.meta_json }}</pre>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>No evidence items were stored for this trace.</p>
+  {% endif %}
+</section>
+
+{% if trace_detail.notes %}
+<section class="admin-panel">
+  <h2>User Visible Notes</h2>
+  <ul>
+    {% for note in trace_detail.notes %}
+    <li>{{ note }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% else %}
+<section class="admin-panel">
+  <h2>Logs</h2>
+  <p>
+    Review recent traces, service log output, and append-only admin action
+    audit entries from the configured runtime paths.
+  </p>
+</section>
+
+<section class="admin-panel">
+  <h2>Trace Explorer</h2>
+  <p>{{ logs_model.trace_explorer.trace_count }} trace file(s) found in the audit directory.</p>
+  {% if logs_model.trace_explorer.traces %}
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th scope="col">Trace ID</th>
+        <th scope="col">Profile</th>
+        <th scope="col">Status</th>
+        <th scope="col">Steps</th>
+        <th scope="col">Evidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in logs_model.trace_explorer.traces %}
+      <tr>
+        <td><a href="{{ item.href }}">{{ item.trace_id }}</a></td>
+        <td>{{ item.profile_id }}</td>
+        <td>{{ item.final_status }}</td>
+        <td>{{ item.step_count }}</td>
+        <td>{{ item.evidence_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No trace files were found.</p>
+  {% endif %}
+</section>
+
+<section class="admin-panel">
+  <h2>Service Log</h2>
+  <p class="admin-muted">{{ logs_model.service_log.path }}</p>
+  {% if logs_model.service_log.exists %}
+  <pre class="admin-code-block">{{ logs_model.service_log.lines | join("\n") }}</pre>
+  {% else %}
+  <p>Service log file not found yet.</p>
+  {% endif %}
+</section>
+
+<section class="admin-panel">
+  <h2>Admin Actions</h2>
+  <p class="admin-muted">{{ logs_model.admin_actions.path }}</p>
+  {% if logs_model.admin_actions.records %}
+  <div class="admin-stack">
+    {% for item in logs_model.admin_actions.records %}
+    <article class="admin-subsection">
+      <h3>{{ item.action }} · {{ item.outcome }}</h3>
+      <p>
+        {{ item.ts or "unknown time" }} · target={{ item.target or "unknown" }}
+        {% if item.remote_addr %}· remote={{ item.remote_addr }}{% endif %}
+      </p>
+      {% if item.details_json %}
+      <pre class="admin-code-block">{{ item.details_json }}</pre>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>No admin action audit entries found.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

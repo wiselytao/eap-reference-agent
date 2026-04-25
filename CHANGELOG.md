@@ -2,6 +2,12 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.13
+
+### Added
+- Added admin `Logs` and trace detail views backed by configured audit traces, service log reads, and `admin_actions.jsonl`, with readable timeline and section-based rendering instead of raw-only output.
+- Added an admin `Docs` page that renders allowlisted repository markdown files from package-contained templates, plus tests covering logs, trace detail, and docs flows.
+
 ## v4.11
 
 ### Changed

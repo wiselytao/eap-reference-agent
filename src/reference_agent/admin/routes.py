@@ -12,6 +12,8 @@ from reference_agent.admin.config_editor import (
     build_configuration_page_model,
     handle_configuration_submission,
 )
+from reference_agent.admin.docs_reader import build_docs_page_model
+from reference_agent.admin.log_reader import build_logs_page_model, build_trace_detail_model
 from reference_agent.admin.process_control import (
     ProcessControlError,
     build_service_control_read_model,
@@ -106,6 +108,53 @@ async def configuration_submit(request: Request) -> HTMLResponse:
             "page_heading": "Configuration",
             "nav_links": nav_links,
             "configuration": handle_configuration_submission(form_data),
+        },
+    )
+
+
+@admin_router.get("/logs", response_class=HTMLResponse)
+async def logs(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "admin/logs.html",
+        {
+            "page_title": "Reference Agent Admin",
+            "page_heading": "Logs",
+            "nav_links": nav_links,
+            "logs_model": build_logs_page_model(),
+            "trace_detail": None,
+        },
+    )
+
+
+@admin_router.get("/logs/trace/{trace_id}", response_class=HTMLResponse)
+async def trace_detail(request: Request, trace_id: str) -> HTMLResponse:
+    model = build_trace_detail_model(trace_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail="Trace not found")
+    return templates.TemplateResponse(
+        request,
+        "admin/logs.html",
+        {
+            "page_title": "Reference Agent Admin",
+            "page_heading": "Logs",
+            "nav_links": nav_links,
+            "logs_model": build_logs_page_model(),
+            "trace_detail": model,
+        },
+    )
+
+
+@admin_router.get("/docs", response_class=HTMLResponse)
+async def docs(request: Request, doc: str | None = None) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "admin/docs.html",
+        {
+            "page_title": "Reference Agent Admin",
+            "page_heading": "Docs",
+            "nav_links": nav_links,
+            "docs_model": build_docs_page_model(doc),
         },
     )
 

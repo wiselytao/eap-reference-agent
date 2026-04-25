@@ -733,11 +733,226 @@ async def test_admin_static_assets_are_served(temp_config):
     assert ".admin-shell" in response.text
 
 
+@pytest.mark.asyncio
+async def test_admin_logs_page_renders_trace_and_service_sections(temp_config, monkeypatch):
+    from reference_agent.admin import routes
+
+    monkeypatch.setattr(
+        routes,
+        "build_logs_page_model",
+        lambda: {
+            "trace_explorer": {
+                "trace_count": 1,
+                "traces": [
+                    {
+                        "trace_id": "trace-001",
+                        "profile_id": "default",
+                        "final_status": "SUCCESS",
+                        "step_count": 2,
+                        "evidence_count": 1,
+                        "href": "/admin/logs/trace/trace-001",
+                    }
+                ],
+            },
+            "service_log": {
+                "path": str(temp_config / "service.log"),
+                "exists": True,
+                "lines": ["service booted", "service ready"],
+            },
+            "admin_actions": {
+                "path": str(temp_config / "traces" / "admin_actions.jsonl"),
+                "records": [
+                    {
+                        "ts": "2026-04-25T10:00:00Z",
+                        "action": "restart",
+                        "target": "service-control",
+                        "outcome": "success",
+                        "remote_addr": "127.0.0.1",
+                    }
+                ],
+            },
+        },
+    )
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/admin/logs")
+
+    assert response.status_code == 200
+    assert "Logs" in response.text
+    assert "Trace Explorer" in response.text
+    assert "Service Log" in response.text
+    assert "trace-001" in response.text
+    assert 'href="/admin/logs/trace/trace-001"' in response.text
+    assert "service booted" in response.text
+    assert "Admin Actions" in response.text
+    assert "restart" in response.text
+
+
+@pytest.mark.asyncio
+async def test_admin_trace_detail_page_renders_readable_timeline(temp_config):
+    trace_dir = temp_config / "traces"
+    trace_dir.mkdir(exist_ok=True)
+    trace_id = "trace-readable"
+    (trace_dir / f"{trace_id}.json").write_text(
+        json.dumps(
+            {
+                "trace_id": trace_id,
+                "profile_id": "default",
+                "profile_version": "v1",
+                "router": {
+                    "strategy_id": "STR_H",
+                    "params": {"intent": "status"},
+                    "rationale_codes": ["MATCH_CAPABILITY"],
+                    "binding_readiness": {
+                        "required_bindings": ["customer_id"],
+                        "provided_bindings": ["customer_id"],
+                        "missing_bindings": [],
+                        "dependency_required": False,
+                        "resolution_policy": "strict",
+                    },
+                    "intent_detected": "status_check",
+                    "candidate_strategies": ["STR_H", "STR_FALLBACK_V"],
+                    "tool_health_snapshot": {"demo.hybrid": "healthy"},
+                    "selected_tools": [{"tool_id": "demo.hybrid", "reason": "best match"}],
+                },
+                "steps": [
+                    {
+                        "step_id": "step-1",
+                        "tool_id": "demo.hybrid",
+                        "input_summary": {"query": "Find customer status"},
+                        "output_summary": {"message": "Found active status"},
+                        "duration_ms": 120,
+                        "error_code": None,
+                        "degraded": False,
+                    },
+                    {
+                        "step_id": "step-2",
+                        "tool_id": "demo.hybrid",
+                        "input_summary": {"query": "Confirm SLA"},
+                        "output_summary": {"message": "SLA platinum"},
+                        "duration_ms": 85,
+                        "error_code": None,
+                        "degraded": False,
+                    },
+                ],
+                "final_status": "SUCCESS",
+                "evidence": [
+                    {
+                        "source_type": "hybrid_answer",
+                        "tool_id": "demo.hybrid",
+                        "source_id": "doc-1",
+                        "locator": {"chat_id": "chat-1", "messageId": "msg-1"},
+                        "snippet": "Customer is active.",
+                        "retrieval_meta": {"score": 0.98},
+                        "confidence": 0.98,
+                    }
+                ],
+                "user_visible_notes": ["Returned active customer status."],
+                "plan_skeleton": {
+                    "answer_blueprint": ["status", "sla"],
+                    "required_fields": ["customer_id"],
+                    "candidate_tools": ["demo.hybrid"],
+                    "constraints": {"max_steps": 2},
+                    "stop_conditions": ["enough_evidence"],
+                    "notes": "Query customer state first.",
+                    "tool_selection_notes": ["Prefer hybrid search."],
+                },
+                "plan_execution": {
+                    "template": "bounded",
+                    "steps": [
+                        {
+                            "step_id": "step-1",
+                            "template": "lookup",
+                            "tool_id": "demo.hybrid",
+                            "input_hint": "status",
+                            "bindings_used": ["customer_id"],
+                        }
+                    ],
+                    "notes": "Short plan.",
+                },
+                "evaluations": [
+                    {
+                        "step_id": "step-1",
+                        "coverage_complete": True,
+                        "covered_items": ["status"],
+                        "missing_items": [],
+                        "bindings_found": ["customer_id"],
+                        "bindings_missing": [],
+                        "evidence_count": 1,
+                        "locator_ok": True,
+                        "should_continue": False,
+                        "notes": "Enough evidence.",
+                        "stop_reasons": ["resolved"],
+                    }
+                ],
+                "queried_tools_by_step": [["demo.hybrid"], ["demo.hybrid"]],
+                "step_plans": [
+                    {
+                        "step_index": 1,
+                        "template": "lookup",
+                        "tool_ids": ["demo.hybrid"],
+                        "questions": ["Find customer status"],
+                        "rationale_codes": ["MATCH_CAPABILITY"],
+                        "notes": "Direct lookup.",
+                    }
+                ],
+                "synthesis": {
+                    "claims": [],
+                    "groups": [],
+                    "intersection_ids": [],
+                    "conflict_ids": [],
+                    "mappings": {},
+                    "notes": "No conflicts.",
+                },
+                "final_status_reasons": ["SUFFICIENT_EVIDENCE"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(f"/admin/logs/trace/{trace_id}")
+
+    assert response.status_code == 200
+    assert "Trace Timeline" in response.text
+    assert trace_id in response.text
+    assert "step-1" in response.text
+    assert "Find customer status" in response.text
+    assert "Found active status" in response.text
+    assert "Routing Summary" in response.text
+    assert "Evidence" in response.text
+    assert "Returned active customer status." in response.text
+
+
+@pytest.mark.asyncio
+async def test_admin_docs_page_renders_allowlisted_project_doc(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/admin/docs?doc=README.md")
+
+    assert response.status_code == 200
+    assert "Docs" in response.text
+    assert "README.md" in response.text
+    assert "Reference Agent" in response.text
+    assert "Reference Agent is a constrained-strategy RAG broker" in response.text
+    assert 'href="/admin/docs?doc=README.md"' in response.text
+
+
 def test_admin_resources_are_package_contained():
     admin_package = files("reference_agent.admin")
 
     assert admin_package.joinpath("templates/admin/base.html").is_file()
     assert admin_package.joinpath("templates/admin/configuration.html").is_file()
+    assert admin_package.joinpath("templates/admin/docs.html").is_file()
+    assert admin_package.joinpath("templates/admin/logs.html").is_file()
     assert admin_package.joinpath("templates/admin/overview.html").is_file()
     assert admin_package.joinpath("templates/admin/service_control.html").is_file()
     assert admin_package.joinpath("templates/admin/system_info.html").is_file()
