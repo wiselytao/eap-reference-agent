@@ -193,7 +193,7 @@ async def service_control_action(
     try:
         result = handler()
     except Exception as exc:
-        append_admin_action_audit(
+        _append_admin_action_audit_safely(
             request,
             action=action_name,
             target="service-control",
@@ -204,7 +204,7 @@ async def service_control_action(
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         raise HTTPException(status_code=500, detail="Service control action failed.") from exc
 
-    append_admin_action_audit(
+    _append_admin_action_audit_safely(
         request,
         action=action_name,
         target="service-control",
@@ -226,7 +226,7 @@ def _spawn_restart_with_audit(remote_addr: str | None) -> None:
     try:
         result = schedule_restart()
     except Exception as exc:
-        append_admin_action_audit(
+        _append_admin_action_audit_safely(
             None,
             action="restart",
             target="service-control",
@@ -236,7 +236,7 @@ def _spawn_restart_with_audit(remote_addr: str | None) -> None:
         )
         return
 
-    append_admin_action_audit(
+    _append_admin_action_audit_safely(
         None,
         action="restart",
         target="service-control",
@@ -250,6 +250,28 @@ def _request_remote_addr(request: Request) -> str | None:
     if request.client is None:
         return None
     return request.client.host
+
+
+def _append_admin_action_audit_safely(
+    request: Request | None,
+    *,
+    action: str,
+    target: str,
+    outcome: str,
+    details: dict[str, object] | None = None,
+    remote_addr_override: str | None = None,
+) -> None:
+    try:
+        append_admin_action_audit(
+            request,
+            action=action,
+            target=target,
+            outcome=outcome,
+            details=details,
+            remote_addr_override=remote_addr_override,
+        )
+    except Exception:
+        return
 
 
 async def _read_form_data(request: Request) -> dict[str, str]:

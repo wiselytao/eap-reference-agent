@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from html import escape
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 import re
@@ -40,44 +41,65 @@ def build_docs_page_model(selected_doc: str | None) -> dict[str, Any]:
 
 
 def list_available_docs() -> list[dict[str, Any]]:
-    repo = repo_root()
-    paths: list[Path] = []
-
-    for relative_name in DOCS_ROOTS:
-        path = repo / relative_name
-        if path.is_file():
-            paths.append(path)
-
-    for relative_dir in DOCS_DIRECTORIES:
-        directory = repo / relative_dir
-        if not directory.is_dir():
-            continue
-        for path in sorted(directory.rglob("*.md")):
-            if any(part.startswith(".") for part in path.parts):
-                continue
-            paths.append(path)
-
     docs: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for path in paths:
-        name = path.relative_to(repo).as_posix()
-        if name in seen:
-            continue
-        seen.add(name)
-        docs.append(
-            {
-                "name": name,
-                "path": str(path),
-                "href": f"/admin/docs?doc={name}",
-                "file_path": path,
-                "is_selected": False,
-            }
-        )
+    for source_name, root in document_roots():
+        for name, doc_ref in iter_doc_refs(root):
+            if name in seen:
+                continue
+            seen.add(name)
+            docs.append(
+                {
+                    "name": name,
+                    "path": str(doc_ref) if source_name == "workspace" else f"bundled_docs/{name}",
+                    "href": f"/admin/docs?doc={name}",
+                    "file_path": doc_ref,
+                    "is_selected": False,
+                }
+            )
     return docs
 
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
+def document_roots() -> list[tuple[str, Path | Any]]:
+    return [
+        ("workspace", repo_root()),
+        ("bundled", files("reference_agent.admin").joinpath("bundled_docs")),
+    ]
+
+
+def iter_doc_refs(root: Path | Any) -> list[tuple[str, Path | Any]]:
+    refs: list[tuple[str, Path | Any]] = []
+
+    for relative_name in DOCS_ROOTS:
+        path = root.joinpath(relative_name)
+        if path.is_file():
+            refs.append((relative_name, path))
+
+    for relative_dir in DOCS_DIRECTORIES:
+        directory = root.joinpath(relative_dir)
+        if not directory.is_dir():
+            continue
+        refs.extend(_iter_markdown_refs(directory, prefix=relative_dir))
+
+    return sorted(refs, key=lambda item: item[0])
+
+
+def _iter_markdown_refs(directory: Path | Any, *, prefix: str) -> list[tuple[str, Path | Any]]:
+    refs: list[tuple[str, Path | Any]] = []
+    for child in sorted(directory.iterdir(), key=lambda item: item.name):
+        if child.name.startswith("."):
+            continue
+        name = f"{prefix}/{child.name}"
+        if child.is_dir():
+            refs.extend(_iter_markdown_refs(child, prefix=name))
+            continue
+        if child.is_file() and child.name.endswith(".md"):
+            refs.append((name, child))
+    return refs
 
 
 def render_markdown(text: str) -> str:

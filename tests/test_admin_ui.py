@@ -212,6 +212,45 @@ async def test_admin_service_control_actions_write_audit_records(temp_config, mo
 
 
 @pytest.mark.asyncio
+async def test_admin_service_control_success_ignores_audit_write_failures(temp_config, monkeypatch):
+    from reference_agent.admin import process_control
+    from reference_agent.admin import routes
+
+    monkeypatch.setattr(
+        routes,
+        "build_service_control_read_model",
+        lambda: {
+            "pid": 2468,
+            "running": True,
+            "healthy": True,
+            "pid_file": str(temp_config / "ra.pid"),
+            "log_file": str(temp_config / "ra.log"),
+            "status_summary": "Running and healthy",
+            "available_actions": ["start", "stop", "restart"],
+        },
+    )
+    monkeypatch.setattr(
+        process_control,
+        "_run_script",
+        lambda script_path: {"message": f"{script_path.name} finished", "script": str(script_path)},
+    )
+    monkeypatch.setattr(
+        routes,
+        "append_admin_action_audit",
+        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("audit unavailable")),
+    )
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/admin/service-control/actions/start")
+
+    assert response.status_code == 200
+    assert response.json()["result"]["message"] == "start.sh finished"
+
+
+@pytest.mark.asyncio
 async def test_admin_service_control_restart_queues_background_task(temp_config, monkeypatch):
     from reference_agent.admin import routes
 
@@ -394,6 +433,23 @@ async def test_admin_configuration_page_renders_targets_and_forms(temp_config):
 
 
 @pytest.mark.asyncio
+async def test_admin_configuration_page_reflects_effective_env_overrides(temp_config, monkeypatch):
+    monkeypatch.setenv("REFERENCE_AGENT_PORT", "9099")
+    monkeypatch.setenv("REFERENCE_AGENT_STREAM_STATUS_UPDATES", "false")
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/admin/configuration")
+
+    assert response.status_code == 200
+    fields = _extract_structured_form_fields(response.text)
+    assert fields["structured_runtime_port"] == "9099"
+    assert fields["structured_runtime_stream_status_updates"] == "false"
+
+
+@pytest.mark.asyncio
 async def test_admin_configuration_structured_preview_marks_restart_required(temp_config):
     app = create_app()
     transport = httpx.ASGITransport(app=app)
@@ -468,6 +524,35 @@ async def test_admin_configuration_structured_preview_then_apply_round_trip_writ
     assert "concurrency: 10" in updated_text
     assert "rate_limit_per_base_url: 11" in updated_text
     assert "stream_status_updates: false" in updated_text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_apply_shows_effective_values_when_env_overrides_are_active(
+    temp_config, monkeypatch
+):
+    monkeypatch.setenv("REFERENCE_AGENT_PORT", "9555")
+    monkeypatch.setenv("REFERENCE_AGENT_STREAM_STATUS_UPDATES", "false")
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    form_data = {
+        "mode": "structured",
+        "action": "apply",
+        "structured_runtime_port": "9191",
+        "structured_runtime_timeout_seconds": "88",
+        "structured_runtime_concurrency": "10",
+        "structured_runtime_rate_limit_per_base_url": "11",
+        "structured_runtime_streaming_default": "true",
+        "structured_runtime_stream_status_updates": "true",
+    }
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/admin/configuration", data=form_data)
+
+    assert response.status_code == 200
+    fields = _extract_structured_form_fields(response.text)
+    assert fields["structured_runtime_port"] == "9555"
+    assert fields["structured_runtime_stream_status_updates"] == "false"
 
 
 @pytest.mark.asyncio
@@ -964,6 +1049,31 @@ async def test_admin_docs_page_renders_allowlisted_project_doc(temp_config):
     assert "<li>Create a virtual environment and install the package.</li>" in response.text
 
 
+@pytest.mark.asyncio
+async def test_admin_docs_page_falls_back_to_packaged_docs_when_workspace_docs_are_unavailable(
+    temp_config, monkeypatch
+):
+    from reference_agent.admin import docs_reader
+
+    bundled_root = files("reference_agent.admin").joinpath("bundled_docs")
+    monkeypatch.setattr(
+        docs_reader,
+        "document_roots",
+        lambda: [("workspace", temp_config / "missing-docs-root"), ("bundled", bundled_root)],
+    )
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/admin/docs?doc=README.md")
+
+    assert response.status_code == 200
+    assert "README.md" in response.text
+    assert "Reference Agent" in response.text
+    assert "bundled_docs/README.md" in response.text
+
+
 def test_admin_resources_are_package_contained():
     admin_package = files("reference_agent.admin")
 
@@ -976,6 +1086,7 @@ def test_admin_resources_are_package_contained():
     assert admin_package.joinpath("templates/admin/system_info.html").is_file()
     assert admin_package.joinpath("static/admin.css").is_file()
     assert admin_package.joinpath("static/admin.js").is_file()
+    assert admin_package.joinpath("bundled_docs/README.md").is_file()
 
 
 @pytest.mark.asyncio

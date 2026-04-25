@@ -38,4 +38,9 @@ where = ["src"]
   "templates/admin/*.html",
   "static/*.css",
   "static/*.js",
+  "bundled_docs/*.md",
+  "bundled_docs/PRD/*.md",
+  "bundled_docs/Reference/*.md",
+  "bundled_docs/Reference/history/*.md",
+  "bundled_docs/doc/*.md",
 ]

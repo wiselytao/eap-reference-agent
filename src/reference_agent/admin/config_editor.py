@@ -11,6 +11,7 @@ from reference_agent.config import (
     configured_config_path,
     configured_profiles_dir,
     configured_tools_path,
+    load_config,
     load_tools_md_text,
     load_yaml,
     validate_config_data,
@@ -85,8 +86,7 @@ def build_configuration_page_model(
 ) -> ConfigurationPageModel:
     targets = list_config_targets()
     selected_target = resolve_target(raw_target_key or "config", targets)
-    config_data = load_yaml(configured_config_path())
-    config_model = validate_config_data(config_data)
+    config_model = load_config(configured_config_path())
     selected_structured_values = structured_values or _structured_values_from_runtime_config(
         config_model.runtime
     )
@@ -108,6 +108,8 @@ def handle_configuration_submission(form_data: Mapping[str, str]) -> Configurati
     if mode == "structured":
         preview = preview_structured_runtime(form_data)
         structured_values = structured_values_from_submission(form_data)
+        if action == "apply" and preview.success_message is not None:
+            structured_values = None
         flash_message = preview.success_message if action == "apply" else None
         return build_configuration_page_model(
             raw_target_key="config",
@@ -234,7 +236,7 @@ def structured_values_from_submission(form_data: Mapping[str, str]) -> dict[str,
     for field in RUNTIME_FIELDS:
         submitted_value = form_data.get(f"structured_runtime_{field.name}")
         if submitted_value is None:
-            config_model = validate_config_data(load_yaml(configured_config_path()))
+            config_model = load_config(configured_config_path())
             return _structured_values_from_runtime_config(config_model.runtime)
         values[field.name] = submitted_value
     return values

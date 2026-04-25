@@ -2,13 +2,6 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
-## v4.16
-
-### Changed
-- Made the admin docs browser deployable outside a source checkout by bundling allowlisted markdown into the admin package and falling back to those packaged copies when workspace docs are unavailable.
-- Decoupled service-control responses from admin action audit write failures so successful start/stop operations no longer return `500` only because the audit log path is unavailable.
-- Updated the configuration UI to display effective runtime values when `REFERENCE_AGENT_PORT` or `REFERENCE_AGENT_STREAM_STATUS_UPDATES` overrides are active, with regression coverage for override display and apply behavior.
-
 ## v4.15
 
 ### Added
