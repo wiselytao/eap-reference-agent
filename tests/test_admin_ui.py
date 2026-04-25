@@ -1,4 +1,5 @@
 from importlib.resources import files
+from html.parser import HTMLParser
 import json
 
 import httpx
@@ -6,6 +7,53 @@ import pytest
 from starlette.requests import Request
 
 from reference_agent.app import create_app
+
+
+class _StructuredFormParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self._in_structured_form = False
+        self._current_select_name: str | None = None
+        self._current_option_value: str | None = None
+        self.fields: dict[str, str] = {}
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        attributes = dict(attrs)
+        if tag == "form" and attributes.get("action") == "/admin/configuration":
+            self._in_structured_form = "admin-form-grid" in attributes.get("class", "")
+            return
+        if not self._in_structured_form:
+            return
+        if tag == "input":
+            name = attributes.get("name")
+            value = attributes.get("value", "")
+            if name is not None:
+                self.fields[name] = value
+            return
+        if tag == "select":
+            self._current_select_name = attributes.get("name")
+            return
+        if tag == "option" and self._current_select_name is not None:
+            self._current_option_value = attributes.get("value", "")
+            if "selected" in attributes:
+                self.fields[self._current_select_name] = self._current_option_value
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "form" and self._in_structured_form:
+            self._in_structured_form = False
+            self._current_select_name = None
+            self._current_option_value = None
+            return
+        if tag == "select":
+            self._current_select_name = None
+        if tag == "option":
+            self._current_option_value = None
+
+
+def _extract_structured_form_fields(html_text: str) -> dict[str, str]:
+    parser = _StructuredFormParser()
+    parser.feed(html_text)
+    return parser.fields
 
 
 @pytest.mark.asyncio
@@ -396,14 +444,20 @@ async def test_admin_configuration_structured_preview_then_apply_round_trip_writ
         preview_response = await client.post(
             "/admin/configuration", data={**form_data, "action": "preview"}
         )
+        preview_fields = _extract_structured_form_fields(preview_response.text)
         apply_response = await client.post(
-            "/admin/configuration", data={**form_data, "action": "apply"}
+            "/admin/configuration",
+            data={**preview_fields, "action": "apply"},
         )
 
     assert preview_response.status_code == 200
     assert 'value="9191"' in preview_response.text
     assert 'value="88"' in preview_response.text
     assert '<option value="false" selected>false</option>' in preview_response.text
+    assert preview_fields["mode"] == "structured"
+    assert preview_fields["structured_runtime_port"] == "9191"
+    assert preview_fields["structured_runtime_timeout_seconds"] == "88"
+    assert preview_fields["structured_runtime_stream_status_updates"] == "false"
 
     assert apply_response.status_code == 200
     assert "Configuration updated" in apply_response.text
@@ -441,6 +495,10 @@ async def test_admin_configuration_invalid_structured_submission_does_not_persis
     assert "Port must be an integer." in response.text
     assert "Restart required:" in response.text
     assert "<strong>no</strong>" in response.text
+    assert 'name="structured_runtime_port"' in response.text
+    assert 'value="bad-port"' in response.text
+    assert 'type="text"' in response.text
+    assert 'inputmode="numeric"' in response.text
     assert config_path.read_text() == before_text
 
 

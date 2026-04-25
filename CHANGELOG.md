@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.11
+
+### Changed
+- Updated the admin structured configuration editor to preserve invalid numeric text on rerender by using text inputs with numeric browser hints, and strengthened configuration tests to submit the preview-rendered structured form during preview/apply round-trips.
+
 ## v4.10
 
 ### Changed
