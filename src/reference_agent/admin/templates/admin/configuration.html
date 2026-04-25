@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<section class="admin-panel">
+  <h2>Configuration</h2>
+  <p>
+    Preview and apply runtime configuration changes through either a narrow
+    structured editor or validated raw file editing.
+  </p>
+  {% if configuration.flash_message %}
+  <p class="admin-feedback admin-feedback-success">{{ configuration.flash_message }}</p>
+  {% endif %}
+</section>
+
+<section class="admin-panel">
+  <h2>Edit Targets</h2>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th scope="col">Target</th>
+        <th scope="col">Path</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for target in configuration.targets %}
+      <tr>
+        <td>{{ target.label }}</td>
+        <td>{{ target.path }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="admin-panel">
+  <h2>Structured Runtime Editor</h2>
+  <form action="/admin/configuration" method="post" class="admin-form-grid">
+    <input type="hidden" name="mode" value="structured" />
+    {% for field in configuration.structured_fields %}
+    <label class="admin-field">
+      <span>{{ field.label }}</span>
+      {% if field.input_type == "boolean" %}
+      <select name="structured_runtime_{{ field.name }}">
+        <option value="true"{% if configuration.structured_values[field.name] %} selected{% endif %}>true</option>
+        <option value="false"{% if not configuration.structured_values[field.name] %} selected{% endif %}>false</option>
+      </select>
+      {% else %}
+      <input
+        type="number"
+        name="structured_runtime_{{ field.name }}"
+        value="{{ configuration.structured_values[field.name] }}"
+      />
+      {% endif %}
+    </label>
+    {% endfor %}
+    <div class="admin-actions">
+      <button type="submit" name="action" value="preview">Preview Structured Changes</button>
+      <button type="submit" name="action" value="apply">Apply Structured Changes</button>
+    </div>
+  </form>
+</section>
+
+<section class="admin-panel">
+  <h2>Raw Editor</h2>
+  <form action="/admin/configuration" method="post">
+    <input type="hidden" name="mode" value="raw" />
+    <label class="admin-field">
+      <span>Target</span>
+      <select name="raw_target">
+        {% for target in configuration.targets %}
+        <option value="{{ target.key }}"{% if configuration.raw_target_key == target.key %} selected{% endif %}>
+          {{ target.label }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="admin-field">
+      <span>File Content</span>
+      <textarea name="raw_content" rows="18">{{ configuration.raw_content }}</textarea>
+    </label>
+    <div class="admin-actions">
+      <button type="submit" name="action" value="preview">Preview Raw Changes</button>
+      <button type="submit" name="action" value="apply">Apply Raw Changes</button>
+    </div>
+  </form>
+</section>
+
+{% if configuration.preview %}
+<section class="admin-panel">
+  <h2>{{ configuration.preview.title }}</h2>
+  <p>Target: {{ configuration.preview.target_label }}</p>
+  <p>
+    Restart required:
+    <strong>{{ "yes" if configuration.preview.restart_required else "no" }}</strong>
+  </p>
+  {% if configuration.preview.changed_fields %}
+  <p>Changed runtime fields: {{ configuration.preview.changed_fields | join(", ") }}</p>
+  {% endif %}
+  {% if configuration.preview.validation_error %}
+  <p class="admin-feedback admin-feedback-error">
+    Validation failed: {{ configuration.preview.validation_error }}
+  </p>
+  {% elif configuration.preview.success_message %}
+  <p class="admin-feedback admin-feedback-success">{{ configuration.preview.success_message }}</p>
+  {% else %}
+  <p class="admin-feedback admin-feedback-success">Validation passed.</p>
+  {% endif %}
+  <h3>Diff</h3>
+  <pre class="admin-code-block">{{ configuration.preview.diff }}</pre>
+</section>
+{% endif %}
+{% endblock %}

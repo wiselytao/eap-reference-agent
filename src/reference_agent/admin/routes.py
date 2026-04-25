@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from importlib.resources import files
+from urllib.parse import parse_qs
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from reference_agent.admin.audit import append_admin_action_audit
+from reference_agent.admin.config_editor import (
+    build_configuration_page_model,
+    handle_configuration_submission,
+)
 from reference_agent.admin.process_control import (
     ProcessControlError,
     build_service_control_read_model,
@@ -72,6 +77,35 @@ async def service_control(request: Request) -> HTMLResponse:
             "page_heading": "Service Control",
             "nav_links": nav_links,
             "service_status": build_service_control_read_model(),
+        },
+    )
+
+
+@admin_router.get("/configuration", response_class=HTMLResponse)
+async def configuration(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "admin/configuration.html",
+        {
+            "page_title": "Reference Agent Admin",
+            "page_heading": "Configuration",
+            "nav_links": nav_links,
+            "configuration": build_configuration_page_model(),
+        },
+    )
+
+
+@admin_router.post("/configuration", response_class=HTMLResponse)
+async def configuration_submit(request: Request) -> HTMLResponse:
+    form_data = await _read_form_data(request)
+    return templates.TemplateResponse(
+        request,
+        "admin/configuration.html",
+        {
+            "page_title": "Reference Agent Admin",
+            "page_heading": "Configuration",
+            "nav_links": nav_links,
+            "configuration": handle_configuration_submission(form_data),
         },
     )
 
@@ -167,3 +201,9 @@ def _request_remote_addr(request: Request) -> str | None:
     if request.client is None:
         return None
     return request.client.host
+
+
+async def _read_form_data(request: Request) -> dict[str, str]:
+    body = (await request.body()).decode("utf-8")
+    parsed = parse_qs(body, keep_blank_values=True)
+    return {key: values[-1] for key, values in parsed.items()}

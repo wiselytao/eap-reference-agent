@@ -327,6 +327,140 @@ async def test_admin_service_control_action_audits_unexpected_failures(temp_conf
 
 
 @pytest.mark.asyncio
+async def test_admin_configuration_page_renders_targets_and_forms(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/admin/configuration")
+
+    assert response.status_code == 200
+    assert "Configuration" in response.text
+    assert str(temp_config / "config.yaml") in response.text
+    assert str(temp_config / "TOOLS.md") in response.text
+    assert str(temp_config / "profiles" / "default.yaml") in response.text
+    assert 'name="structured_runtime_port"' in response.text
+    assert 'name="structured_runtime_timeout_seconds"' in response.text
+    assert 'name="structured_runtime_streaming_default"' in response.text
+    assert 'name="raw_content"' in response.text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_structured_preview_marks_restart_required(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    form_data = {
+        "mode": "structured",
+        "action": "preview",
+        "structured_runtime_port": "9090",
+        "structured_runtime_timeout_seconds": "75",
+        "structured_runtime_concurrency": "6",
+        "structured_runtime_rate_limit_per_base_url": "8",
+        "structured_runtime_streaming_default": "true",
+        "structured_runtime_stream_status_updates": "false",
+    }
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/admin/configuration", data=form_data)
+
+    assert response.status_code == 200
+    assert "Structured Runtime Preview" in response.text
+    assert "restart required" in response.text.lower()
+    assert "9090" in response.text
+    assert "75" in response.text
+    assert "stream_status_updates" in response.text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_raw_preview_rejects_invalid_yaml(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    form_data = {
+        "mode": "raw",
+        "action": "preview",
+        "raw_target": "config",
+        "raw_content": "runtime:\n  port: [",
+    }
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/admin/configuration", data=form_data)
+
+    assert response.status_code == 200
+    assert "Validation failed" in response.text
+    assert "while parsing" in response.text.lower()
+    assert "config.yaml" in response.text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_raw_preview_rejects_invalid_tools_markdown(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    form_data = {
+        "mode": "raw",
+        "action": "preview",
+        "raw_target": "tools",
+        "raw_content": "# TOOLS\n\nNo fenced yaml block here.\n",
+    }
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/admin/configuration", data=form_data)
+
+    assert response.status_code == 200
+    assert "Validation failed" in response.text
+    assert "yaml" in response.text.lower()
+    assert "TOOLS.md" in response.text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_apply_writes_only_validated_content(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    config_path = temp_config / "config.yaml"
+
+    invalid_form = {
+        "mode": "raw",
+        "action": "apply",
+        "raw_target": "config",
+        "raw_content": "runtime:\n  port: [",
+    }
+    valid_form = {
+        "mode": "structured",
+        "action": "apply",
+        "structured_runtime_port": "9091",
+        "structured_runtime_timeout_seconds": "90",
+        "structured_runtime_concurrency": "7",
+        "structured_runtime_rate_limit_per_base_url": "9",
+        "structured_runtime_streaming_default": "true",
+        "structured_runtime_stream_status_updates": "true",
+    }
+
+    before_invalid = config_path.read_text()
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        invalid_response = await client.post("/admin/configuration", data=invalid_form)
+
+    assert invalid_response.status_code == 200
+    assert "Validation failed" in invalid_response.text
+    assert config_path.read_text() == before_invalid
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        valid_response = await client.post("/admin/configuration", data=valid_form)
+
+    assert valid_response.status_code == 200
+    assert "Configuration updated" in valid_response.text
+    updated_text = config_path.read_text()
+    assert "port: 9091" in updated_text
+    assert "timeout_seconds: 90" in updated_text
+    assert "concurrency: 7" in updated_text
+    assert "rate_limit_per_base_url: 9" in updated_text
+    assert "streaming_default: true" in updated_text
+    assert "stream_status_updates: true" in updated_text
+
+
+@pytest.mark.asyncio
 async def test_admin_static_assets_are_served(temp_config):
     app = create_app()
     transport = httpx.ASGITransport(app=app)
@@ -342,6 +476,7 @@ def test_admin_resources_are_package_contained():
     admin_package = files("reference_agent.admin")
 
     assert admin_package.joinpath("templates/admin/base.html").is_file()
+    assert admin_package.joinpath("templates/admin/configuration.html").is_file()
     assert admin_package.joinpath("templates/admin/overview.html").is_file()
     assert admin_package.joinpath("templates/admin/service_control.html").is_file()
     assert admin_package.joinpath("templates/admin/system_info.html").is_file()

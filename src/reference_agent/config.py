@@ -79,10 +79,30 @@ class AppConfig(BaseModel):
     profiling_retry_backoff_seconds: int = 2
 
 
+def configured_path(env_var: str, default: str) -> Path:
+    return Path(os.getenv(env_var, default)).resolve()
+
+
+def configured_config_path() -> Path:
+    return configured_path("REFERENCE_AGENT_CONFIG", "config.yaml")
+
+
+def configured_tools_path() -> Path:
+    return configured_path("REFERENCE_AGENT_TOOLS", "tools/TOOLS.md")
+
+
+def configured_profiles_dir() -> Path:
+    return configured_path("REFERENCE_AGENT_PROFILES", "profiles")
+
+
 def load_yaml(path: Path) -> Dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"Missing config file: {path}")
     return yaml.safe_load(path.read_text()) or {}
+
+
+def validate_config_data(data: Dict[str, Any]) -> AppConfig:
+    return AppConfig(**data)
 
 
 def load_config(path: Path) -> AppConfig:
@@ -108,7 +128,7 @@ def load_config(path: Path) -> AppConfig:
         if env_next:
             security["bearer_token_next"] = env_next
     data["security"] = security
-    return AppConfig(**data)
+    return validate_config_data(data)
 
 
 def _extract_tools_yaml(text: str) -> Dict[str, Any]:
@@ -118,12 +138,16 @@ def _extract_tools_yaml(text: str) -> Dict[str, Any]:
     return yaml.safe_load(match.group(1)) or {}
 
 
+def load_tools_md_text(text: str) -> List[ToolEntry]:
+    data = _extract_tools_yaml(text)
+    tools = data.get("tools", [])
+    return [ToolEntry(**tool) for tool in tools]
+
+
 def load_tools_md(path: Path) -> List[ToolEntry]:
     if not path.exists():
         raise FileNotFoundError(f"Missing TOOLS.md: {path}")
-    data = _extract_tools_yaml(path.read_text())
-    tools = data.get("tools", [])
-    tool_entries = [ToolEntry(**tool) for tool in tools]
+    tool_entries = load_tools_md_text(path.read_text())
     tool_entries.extend(load_tools_from_env())
     return tool_entries
 

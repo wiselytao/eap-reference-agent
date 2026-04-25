@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.9
+
+### Added
+- Added an admin `Configuration` page with structured runtime editing, validated raw file previews for `config.yaml`, `tools/TOOLS.md`, and profile YAMLs, plus apply flows that only write validated content.
+
 ## v4.8
 
 ### Changed
