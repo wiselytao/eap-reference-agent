@@ -50,7 +50,7 @@ class ConfigPreview:
 class ConfigurationPageModel:
     targets: tuple[ConfigEditTarget, ...]
     structured_fields: tuple[RuntimeField, ...]
-    structured_values: dict[str, Any]
+    structured_values: dict[str, str]
     raw_target_key: str
     raw_content: str
     preview: ConfigPreview | None = None
@@ -79,6 +79,7 @@ def build_configuration_page_model(
     *,
     raw_target_key: str | None = None,
     raw_content: str | None = None,
+    structured_values: dict[str, str] | None = None,
     preview: ConfigPreview | None = None,
     flash_message: str | None = None,
 ) -> ConfigurationPageModel:
@@ -86,14 +87,14 @@ def build_configuration_page_model(
     selected_target = resolve_target(raw_target_key or "config", targets)
     config_data = load_yaml(configured_config_path())
     config_model = validate_config_data(config_data)
-    structured_values = {
-        field.name: getattr(config_model.runtime, field.name) for field in RUNTIME_FIELDS
-    }
+    selected_structured_values = structured_values or _structured_values_from_runtime_config(
+        config_model.runtime
+    )
     selected_raw_content = raw_content if raw_content is not None else selected_target.path.read_text()
     return ConfigurationPageModel(
         targets=targets,
         structured_fields=RUNTIME_FIELDS,
-        structured_values=structured_values,
+        structured_values=selected_structured_values,
         raw_target_key=selected_target.key,
         raw_content=selected_raw_content,
         preview=preview,
@@ -106,10 +107,12 @@ def handle_configuration_submission(form_data: Mapping[str, str]) -> Configurati
     action = form_data.get("action", "preview")
     if mode == "structured":
         preview = preview_structured_runtime(form_data)
+        structured_values = structured_values_from_submission(form_data)
         flash_message = preview.success_message if action == "apply" else None
         return build_configuration_page_model(
             raw_target_key="config",
             raw_content=preview.content if action == "apply" else None,
+            structured_values=structured_values,
             preview=preview,
             flash_message=flash_message,
         )
@@ -226,6 +229,17 @@ def resolve_target(
     raise ValueError(f"Unknown config target: {target_key}")
 
 
+def structured_values_from_submission(form_data: Mapping[str, str]) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for field in RUNTIME_FIELDS:
+        submitted_value = form_data.get(f"structured_runtime_{field.name}")
+        if submitted_value is None:
+            config_model = validate_config_data(load_yaml(configured_config_path()))
+            return _structured_values_from_runtime_config(config_model.runtime)
+        values[field.name] = submitted_value
+    return values
+
+
 def _build_preview(
     *,
     target: ConfigEditTarget,
@@ -238,12 +252,14 @@ def _build_preview(
     current_text = target.path.read_text()
     validation_error: str | None = None
     success_message: str | None = None
+    has_valid_changes = False
 
     try:
         validator(content)
     except (ValueError, yaml.YAMLError) as exc:
         validation_error = str(exc)
     else:
+        has_valid_changes = current_text != content
         if action == "apply":
             target.path.write_text(content)
             success_message = "Configuration updated."
@@ -254,7 +270,7 @@ def _build_preview(
         target_label=target.label,
         content=content,
         diff=_build_diff(current_text, content, str(target.path)),
-        restart_required=current_text != content,
+        restart_required=has_valid_changes,
         changed_fields=changed_fields,
         validation_error=validation_error,
         success_message=success_message,
@@ -315,3 +331,14 @@ def _parse_bool(raw_value: str, field_label: str) -> bool:
     if normalized in {"false", "0", "no", "off"}:
         return False
     raise ValueError(f"{field_label} must be a boolean.")
+
+
+def _structured_values_from_runtime_config(runtime_config: Any) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for field in RUNTIME_FIELDS:
+        value = getattr(runtime_config, field.name)
+        if field.input_type == "boolean":
+            values[field.name] = "true" if value else "false"
+        else:
+            values[field.name] = str(value)
+    return values

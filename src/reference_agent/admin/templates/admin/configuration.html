@@ -41,8 +41,8 @@
       <span>{{ field.label }}</span>
       {% if field.input_type == "boolean" %}
       <select name="structured_runtime_{{ field.name }}">
-        <option value="true"{% if configuration.structured_values[field.name] %} selected{% endif %}>true</option>
-        <option value="false"{% if not configuration.structured_values[field.name] %} selected{% endif %}>false</option>
+        <option value="true"{% if configuration.structured_values[field.name] == "true" %} selected{% endif %}>true</option>
+        <option value="false"{% if configuration.structured_values[field.name] == "false" %} selected{% endif %}>false</option>
       </select>
       {% else %}
       <input

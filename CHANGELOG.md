@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.10
+
+### Changed
+- Hardened admin configuration preview/apply flows so structured previews preserve submitted values, invalid previews do not report restart-required state, and TOOLS/profile raw writes are covered by stricter validation tests.
+
 ## v4.9
 
 ### Added

@@ -370,6 +370,78 @@ async def test_admin_configuration_structured_preview_marks_restart_required(tem
     assert "9090" in response.text
     assert "75" in response.text
     assert "stream_status_updates" in response.text
+    assert 'name="structured_runtime_port"' in response.text
+    assert 'value="9090"' in response.text
+    assert '<option value="false" selected>false</option>' in response.text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_structured_preview_then_apply_round_trip_writes_previewed_values(
+    temp_config,
+):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    config_path = temp_config / "config.yaml"
+    form_data = {
+        "mode": "structured",
+        "structured_runtime_port": "9191",
+        "structured_runtime_timeout_seconds": "88",
+        "structured_runtime_concurrency": "10",
+        "structured_runtime_rate_limit_per_base_url": "11",
+        "structured_runtime_streaming_default": "true",
+        "structured_runtime_stream_status_updates": "false",
+    }
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        preview_response = await client.post(
+            "/admin/configuration", data={**form_data, "action": "preview"}
+        )
+        apply_response = await client.post(
+            "/admin/configuration", data={**form_data, "action": "apply"}
+        )
+
+    assert preview_response.status_code == 200
+    assert 'value="9191"' in preview_response.text
+    assert 'value="88"' in preview_response.text
+    assert '<option value="false" selected>false</option>' in preview_response.text
+
+    assert apply_response.status_code == 200
+    assert "Configuration updated" in apply_response.text
+    assert 'value="9191"' in apply_response.text
+    assert config_path.read_text().count("port: 9191") == 1
+    updated_text = config_path.read_text()
+    assert "timeout_seconds: 88" in updated_text
+    assert "concurrency: 10" in updated_text
+    assert "rate_limit_per_base_url: 11" in updated_text
+    assert "stream_status_updates: false" in updated_text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_invalid_structured_submission_does_not_persist_changes(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    config_path = temp_config / "config.yaml"
+    before_text = config_path.read_text()
+    form_data = {
+        "mode": "structured",
+        "action": "apply",
+        "structured_runtime_port": "bad-port",
+        "structured_runtime_timeout_seconds": "90",
+        "structured_runtime_concurrency": "7",
+        "structured_runtime_rate_limit_per_base_url": "9",
+        "structured_runtime_streaming_default": "true",
+        "structured_runtime_stream_status_updates": "true",
+    }
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/admin/configuration", data=form_data)
+
+    assert response.status_code == 200
+    assert "Validation failed" in response.text
+    assert "Port must be an integer." in response.text
+    assert "Restart required:" in response.text
+    assert "<strong>no</strong>" in response.text
+    assert config_path.read_text() == before_text
 
 
 @pytest.mark.asyncio
@@ -458,6 +530,136 @@ async def test_admin_configuration_apply_writes_only_validated_content(temp_conf
     assert "rate_limit_per_base_url: 9" in updated_text
     assert "streaming_default: true" in updated_text
     assert "stream_status_updates: true" in updated_text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_raw_apply_writes_validated_tools_content(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    tools_path = temp_config / "TOOLS.md"
+    raw_content = """
+# TOOLS
+
+```yaml
+tools:
+  - tool_id: "demo.hybrid"
+    type: "hybridrag_pipeline"
+    project_id: "demo"
+    base_url: "http://example.com"
+    auth_ref: "TEST_TOKEN"
+    summary: "Updated tool summary."
+    capabilities: ["hybrid_rag"]
+    constraints:
+      timeout_class: "standard"
+    evidence_contract: "REQUIRED"
+    evidence_locator_policy: "chat_message_ref"
+```
+"""
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/admin/configuration",
+            data={
+                "mode": "raw",
+                "action": "apply",
+                "raw_target": "tools",
+                "raw_content": raw_content,
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Configuration updated" in response.text
+    assert "Updated tool summary." in tools_path.read_text()
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_invalid_raw_apply_does_not_write_tools_content(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    tools_path = temp_config / "TOOLS.md"
+    before_text = tools_path.read_text()
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/admin/configuration",
+            data={
+                "mode": "raw",
+                "action": "apply",
+                "raw_target": "tools",
+                "raw_content": "# TOOLS\n\nNo fenced yaml block here.\n",
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Validation failed" in response.text
+    assert "<strong>no</strong>" in response.text
+    assert tools_path.read_text() == before_text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_raw_apply_writes_validated_profile_content(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    profile_path = temp_config / "profiles" / "default.yaml"
+    raw_content = """
+profile_id: "default"
+version: "v2"
+enabled_tools:
+  - "demo.hybrid"
+allowed_strategies:
+  - "STR_H"
+limits:
+  max_steps: 4
+  evidence_min: 1
+  evidence_max: 6
+fallback_order:
+  - "STR_FALLBACK_V"
+answer_policy:
+  must_cite: true
+  conflict_show: true
+  no_evidence_template: "TPL_NO_EVIDENCE_V1"
+"""
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/admin/configuration",
+            data={
+                "mode": "raw",
+                "action": "apply",
+                "raw_target": "profile:default",
+                "raw_content": raw_content,
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Configuration updated" in response.text
+    updated_text = profile_path.read_text()
+    assert 'version: "v2"' in updated_text
+    assert "max_steps: 4" in updated_text
+
+
+@pytest.mark.asyncio
+async def test_admin_configuration_invalid_raw_apply_does_not_write_profile_content(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    profile_path = temp_config / "profiles" / "default.yaml"
+    before_text = profile_path.read_text()
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/admin/configuration",
+            data={
+                "mode": "raw",
+                "action": "apply",
+                "raw_target": "profile:default",
+                "raw_content": 'profile_id: "default"\nversion: "v2"\n',
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Validation failed" in response.text
+    assert "<strong>no</strong>" in response.text
+    assert profile_path.read_text() == before_text
 
 
 @pytest.mark.asyncio
