@@ -31,7 +31,10 @@ def build_trace_detail_model(trace_id: str) -> dict[str, Any] | None:
     if not trace_path.exists():
         return None
 
-    trace = Trace(**json.loads(trace_path.read_text(encoding="utf-8")))
+    try:
+        trace = Trace(**json.loads(trace_path.read_text(encoding="utf-8")))
+    except Exception:
+        return None
     return {
         "trace_id": trace.trace_id,
         "profile_id": trace.profile_id,

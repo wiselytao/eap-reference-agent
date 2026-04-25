@@ -28,6 +28,14 @@ python -m reference_agent.main
 - Stop: `scripts/stop.sh`
 `scripts/start.sh` prefers `.venv/bin/python` if present, otherwise falls back to `python3` or `python`.
 
+## Admin Web UI
+- Open `/admin` on the running Reference Agent service.
+- Use `Service Control` for local daemon start/stop/restart and status checks.
+- Use `Configuration` for structured runtime edits or validated raw file updates.
+- Use `Logs` to inspect traces, service logs, and append-only admin action audits.
+- Use `System Info` to review active paths, routes, and runtime metadata.
+- Use `Docs` to browse allowlisted project documentation from the service itself.
+
 ## API & MCP Adapter
 See `doc/API_MCP.md` for endpoint usage and examples.
 Progress streaming is available via `POST /ask/stream` (SSE).

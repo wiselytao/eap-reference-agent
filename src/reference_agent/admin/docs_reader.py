@@ -85,6 +85,7 @@ def render_markdown(text: str) -> str:
     blocks: list[str] = []
     paragraph: list[str] = []
     list_items: list[str] = []
+    list_kind: str | None = None
     in_code = False
     code_lines: list[str] = []
 
@@ -94,9 +95,12 @@ def render_markdown(text: str) -> str:
             paragraph.clear()
 
     def flush_list() -> None:
+        nonlocal list_kind
         if list_items:
-            blocks.append("<ul>" + "".join(list_items) + "</ul>")
+            tag = "ol" if list_kind == "ordered" else "ul"
+            blocks.append(f"<{tag}>" + "".join(list_items) + f"</{tag}>")
             list_items.clear()
+        list_kind = None
 
     def flush_code() -> None:
         if code_lines:
@@ -140,12 +144,18 @@ def render_markdown(text: str) -> str:
 
         if stripped.startswith("- ") or stripped.startswith("* "):
             flush_paragraph()
+            if list_kind not in (None, "unordered"):
+                flush_list()
+            list_kind = "unordered"
             list_items.append(f"<li>{render_inline(stripped[2:].strip())}</li>")
             continue
 
-        match = re.match(r"^\d+\.\s+(.*)$", stripped)
+        match = re.match(r"^\d+[.)]\s+(.*)$", stripped)
         if match:
             flush_paragraph()
+            if list_kind not in (None, "ordered"):
+                flush_list()
+            list_kind = "ordered"
             list_items.append(f"<li>{render_inline(match.group(1).strip())}</li>")
             continue
 

@@ -2,6 +2,16 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.15
+
+### Added
+- Documented the built-in Admin Web UI in `README.md` and added a smoke test that resolves every primary admin section endpoint.
+
+## v4.14
+
+### Changed
+- Hardened admin trace/detail and docs rendering so malformed trace files degrade to a controlled 404 and ordered markdown lists from repository docs render correctly in `/admin/docs`.
+
 ## v4.13
 
 ### Added

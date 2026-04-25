@@ -931,6 +931,22 @@ async def test_admin_trace_detail_page_renders_readable_timeline(temp_config):
 
 
 @pytest.mark.asyncio
+async def test_admin_trace_detail_page_handles_malformed_trace_gracefully(temp_config):
+    trace_dir = temp_config / "traces"
+    trace_dir.mkdir(exist_ok=True)
+    (trace_dir / "broken-trace.json").write_text("{not-json", encoding="utf-8")
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/admin/logs/trace/broken-trace")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Trace not found"
+
+
+@pytest.mark.asyncio
 async def test_admin_docs_page_renders_allowlisted_project_doc(temp_config):
     app = create_app()
     transport = httpx.ASGITransport(app=app)
@@ -944,6 +960,8 @@ async def test_admin_docs_page_renders_allowlisted_project_doc(temp_config):
     assert "Reference Agent" in response.text
     assert "Reference Agent is a constrained-strategy RAG broker" in response.text
     assert 'href="/admin/docs?doc=README.md"' in response.text
+    assert "<ol>" in response.text
+    assert "<li>Create a virtual environment and install the package.</li>" in response.text
 
 
 def test_admin_resources_are_package_contained():
@@ -958,3 +976,21 @@ def test_admin_resources_are_package_contained():
     assert admin_package.joinpath("templates/admin/system_info.html").is_file()
     assert admin_package.joinpath("static/admin.css").is_file()
     assert admin_package.joinpath("static/admin.js").is_file()
+
+
+@pytest.mark.asyncio
+async def test_admin_sections_all_resolve(temp_config):
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        for route in (
+            "/admin",
+            "/admin/service-control",
+            "/admin/configuration",
+            "/admin/logs",
+            "/admin/system-info",
+            "/admin/docs",
+        ):
+            response = await client.get(route)
+            assert response.status_code == 200, route
