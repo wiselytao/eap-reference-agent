@@ -7,6 +7,11 @@ All notable changes for this repository are documented here. Entries are based o
 ### Changed
 - Updated the admin structured configuration editor to preserve invalid numeric text on rerender by using text inputs with numeric browser hints, and strengthened configuration tests to submit the preview-rendered structured form during preview/apply round-trips.
 
+## v4.12
+
+### Changed
+- Removed native pattern validation from admin structured numeric inputs so invalid values still reach server-side validation, while keeping numeric keyboard hints and locking the regression down in tests.
+
 ## v4.10
 
 ### Changed

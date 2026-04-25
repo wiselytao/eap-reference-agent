@@ -499,6 +499,7 @@ async def test_admin_configuration_invalid_structured_submission_does_not_persis
     assert 'value="bad-port"' in response.text
     assert 'type="text"' in response.text
     assert 'inputmode="numeric"' in response.text
+    assert 'pattern="[0-9]*"' not in response.text
     assert config_path.read_text() == before_text
 
 
