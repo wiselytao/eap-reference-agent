@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.17
+
+### Changed
+- Removed obsolete top-level admin template and static files left over from the initial foundation so the built-in Admin UI now relies only on package-contained assets under `reference_agent.admin`.
+
 ## v4.16
 
 ### Changed
