@@ -1,5 +1,12 @@
 document.documentElement.classList.add("admin-ui-ready");
 
+/* ── Staggered panel entrance animations ── */
+const panels = document.querySelectorAll(".admin-panel");
+panels.forEach((panel, i) => {
+  panel.style.animationDelay = `${i * 0.06}s`;
+});
+
+/* ── Service Control live polling ── */
 const serviceControlRoot = document.querySelector("[data-admin-service-control='true']");
 
 if (serviceControlRoot) {

@@ -30,7 +30,7 @@
 
 <section class="admin-panel">
   <h2>Actions</h2>
-  <div>
+  <div class="admin-actions">
     {% for action in service_status.available_actions %}
     <form action="/admin/service-control/actions/{{ action }}" method="post" data-admin-action-form>
       <button type="submit" data-admin-action="{{ action }}">{{ action | capitalize }}</button>

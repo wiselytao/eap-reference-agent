@@ -2,6 +2,11 @@
 
 All notable changes for this repository are documented here. Entries are based on the v1 PRD and the current implementation.
 
+## v4.18
+
+### Changed
+- Redesigned the admin web UI with a modern dark theme, glassmorphism panels, gradient accents (purple-indigo), Inter + JetBrains Mono typography, SVG navigation icons, staggered entrance animations, stat card grids for overview, and full responsive support.
+
 ## v4.17
 
 ### Changed

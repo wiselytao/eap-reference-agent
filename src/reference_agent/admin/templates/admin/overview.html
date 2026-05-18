@@ -10,11 +10,13 @@
 </section>
 <section class="admin-panel">
   <h2>Runtime Summary</h2>
-  <dl>
+  <div class="admin-overview-grid">
     {% for item in overview.summary_items %}
-    <dt>{{ item.label }}</dt>
-    <dd>{{ item.value }}</dd>
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">{{ item.label }}</div>
+      <div class="admin-stat-value">{{ item.value }}</div>
+    </div>
     {% endfor %}
-  </dl>
+  </div>
 </section>
 {% endblock %}
